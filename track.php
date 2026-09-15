@@ -7,8 +7,6 @@ require_once __DIR__ . '/includes/turnstile.php';
 require_once __DIR__ . '/includes/mailer.php';
 require_once __DIR__ . '/includes/notifications_helper.php';
 
-$currentLang = $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? 'en';
-
 $code        = trim($_REQUEST['code'] ?? '');
 $token       = trim($_REQUEST['token'] ?? '');
 $searchEmail = trim($_REQUEST['email'] ?? ($_SESSION['user_email'] ?? ''));
@@ -24,6 +22,7 @@ if ($userRole === 'agent' && $userId > 0) {
     $hasAgency = (bool)$stmtAgCheck->fetchColumn();
 }
 
+// Full Search Exemption: Admin, Agency, or Agent with Agency
 $canSearchWithoutEmail = in_array($userRole, ['admin', 'agency'], true) || ($userRole === 'agent' && $hasAgency);
 $isStaff = in_array($userRole, ['admin', 'agency', 'agent'], true);
 
@@ -77,7 +76,7 @@ if (!empty($code)) {
         }
     }
 
-    // Toggle Follow
+    // Toggle Follow Ticket
     if ($ticket && $isStaff && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow'])) {
         $staffUserId = (int)$_SESSION['user_id'];
         $stmtCheckFollow = $pdo->prepare("SELECT id FROM ticket_followers WHERE ticket_id = ? AND user_id = ?");
@@ -186,6 +185,9 @@ if (!empty($code)) {
 
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
+
+// Detect active language after loading header.php
+$activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_COOKIE['lang'] ?? 'en';
 ?>
 
 <!-- Local My-WYSIWYG Assets (CSS, i18n, JS) -->
@@ -248,13 +250,16 @@ require_once __DIR__ . '/includes/sidebar.php';
                     <span class="badge bg-info text-dark"><?php echo strtoupper($ticket['status']); ?></span>
                 </div>
                 <div class="card-body">
-                    <!-- Original Content Area -->
+                    <!-- Original Message Box -->
                     <div class="ticket-description mb-3 content-original"><?php echo $ticket['message']; ?></div>
                     
-                    <!-- Translation Container (Hidden by default) -->
+                    <!-- Translated Message Box (Hidden by default) -->
                     <div class="content-translated alert alert-light border p-3 mb-3 d-none">
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
-                            <small class="text-primary fw-bold"><i class="fa-solid fa-language me-1"></i> Translated content (<?php echo strtoupper($currentLang); ?>) <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span></small>
+                            <small class="text-primary fw-bold">
+                                <i class="fa-solid fa-language me-1"></i> Translated content (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
+                                <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
+                            </small>
                             <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
                         </div>
                         <div class="translated-text"></div>
@@ -264,11 +269,11 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="d-flex align-items-center gap-3">
                             <small class="text-muted">Submitted on: <?php echo $ticket['created_at']; ?> | Category: <strong><?php echo htmlspecialchars($ticket['category_name'] ?? 'General'); ?></strong></small>
                             
-                            <!-- Translation Trigger Button -->
-                            <button type="button" class="btn btn-sm btn-outline-secondary btn-translate" 
+                            <!-- On-demand Translate Button -->
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-translate" 
                                     data-item-type="ticket_message" 
                                     data-item-id="<?php echo $ticket['id']; ?>">
-                                <i class="fa-solid fa-language me-1"></i> Translate to <?php echo strtoupper($currentLang); ?>
+                                <i class="fa-solid fa-language me-1"></i> Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)
                             </button>
                         </div>
 
@@ -313,22 +318,25 @@ require_once __DIR__ . '/includes/sidebar.php';
                         </strong>
                         <div class="d-flex align-items-center gap-2">
                             <small class="text-muted"><?php echo $reply['created_at']; ?></small>
-                            <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-translate ms-2" 
+                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-translate" 
                                     data-item-type="reply_message" 
                                     data-item-id="<?php echo $reply['id']; ?>"
-                                    title="Translate into <?php echo strtoupper($currentLang); ?>">
-                                <i class="fa-solid fa-language text-secondary"></i>
+                                    title="Translate">
+                                <i class="fa-solid fa-language me-1"></i> <span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>
                             </button>
                         </div>
                     </div>
                     <div class="card-body">
-                        <!-- Reply Original Content -->
+                        <!-- Reply Original Message -->
                         <div class="content-original"><?php echo $reply['message']; ?></div>
 
                         <!-- Reply Translated Box -->
                         <div class="content-translated alert alert-light border p-2 mt-2 d-none">
                             <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
-                                <small class="text-primary fw-bold"><i class="fa-solid fa-language me-1"></i> Translated (<?php echo strtoupper($currentLang); ?>) <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span></small>
+                                <small class="text-primary fw-bold">
+                                    <i class="fa-solid fa-language me-1"></i> Translated (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
+                                    <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
+                                </small>
                                 <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
                             </div>
                             <div class="translated-text"></div>
@@ -380,16 +388,25 @@ require_once __DIR__ . '/includes/sidebar.php';
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // WYSIWYG Init
+        // Init WYSIWYG
         let editorInstance = null;
         if (typeof MyWysiwyg !== 'undefined' && document.getElementById('reply_message')) {
             editorInstance = new MyWysiwyg('#reply_message', {
-                lang: '<?php echo htmlspecialchars($currentLang ?? "en"); ?>',
+                lang: '<?php echo htmlspecialchars($activeLang); ?>',
                 maxChars: 5000
             });
         }
 
-        // AI Suggestion Handler
+        // Helper per ottenere la lingua attualmente attiva dalla select dell'header
+        function getSelectedHeaderLang() {
+            const select = document.querySelector('select[name="lang"], select#lang_select, select.language-selector');
+            if (select && select.value) {
+                return select.value.toLowerCase();
+            }
+            return '<?php echo htmlspecialchars($activeLang); ?>';
+        }
+
+        // AI Reply Generator
         const btnAI = document.getElementById('btn_generate_ai');
         const spinner = document.getElementById('ai_spinner');
         if (btnAI) {
@@ -423,25 +440,26 @@ require_once __DIR__ . '/includes/sidebar.php';
             });
         }
 
-        // On-Demand Translation via LibreTranslate & MySQL Cache
-        const targetLang = '<?php echo htmlspecialchars($currentLang); ?>';
-        const ticketCode = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
-        const ticketToken= '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
+        // Gestione Traduzioni On-Demand tramite LibreTranslate e Cache MySQL
+        const ticketCode  = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
+        const ticketToken = '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
 
         document.querySelectorAll('.btn-translate').forEach(btn => {
             btn.addEventListener('click', function() {
+                const targetLang = getSelectedHeaderLang();
                 const itemType = this.getAttribute('data-item-type');
                 const itemId   = this.getAttribute('data-item-id');
                 const cardBody = this.closest('.card-body') || this.closest('.card');
                 
-                const origBox  = cardBody.querySelector('.content-original');
-                const transBox = cardBody.querySelector('.content-translated');
-                const transText= transBox.querySelector('.translated-text');
+                const origBox    = cardBody.querySelector('.content-original');
+                const transBox   = cardBody.querySelector('.content-translated');
+                const transText  = transBox.querySelector('.translated-text');
                 const cacheBadge = transBox.querySelector('.cache-badge');
+                const langLabels = transBox.querySelectorAll('.target-lang-label');
 
                 const origBtnHtml = this.innerHTML;
                 this.disabled = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Translating...';
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
 
                 const formData = new FormData();
                 formData.append('item_type', itemType);
@@ -461,6 +479,7 @@ require_once __DIR__ . '/includes/sidebar.php';
 
                     if (res.success && res.translated) {
                         transText.innerHTML = res.translated;
+                        langLabels.forEach(l => l.textContent = targetLang.toUpperCase());
                         if (cacheBadge) {
                             cacheBadge.textContent = res.cached ? 'cached' : 'live';
                         }
@@ -473,12 +492,12 @@ require_once __DIR__ . '/includes/sidebar.php';
                 .catch(() => {
                     this.disabled = false;
                     this.innerHTML = origBtnHtml;
-                    alert('Communication error with the translation service.');
+                    alert('Communication error with translation API.');
                 });
             });
         });
 
-        // Restore Original Text Toggle
+        // Ripristina testo originale
         document.querySelectorAll('.btn-restore-orig').forEach(btn => {
             btn.addEventListener('click', function() {
                 const cardBody = this.closest('.card-body') || this.closest('.card');
