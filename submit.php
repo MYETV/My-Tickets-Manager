@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $shouldSend) {
         $turnstileToken = $_POST['cf-turnstile-response'] ?? '';
         
         if (!verify_turnstile($pdo, $turnstileToken)) {
-            $error = 'Captcha verification failed. Please try again.';
+            $error = __('captcha_failed', 'Captcha verification failed. Please try again.');
         } else {
             $subject    = trim($_POST['subject'] ?? '');
             $message    = trim($_POST['message'] ?? '');
@@ -46,9 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $shouldSend) {
             $guestName  = isset($_SESSION['user_id']) ? ($_SESSION['username'] ?? '') : trim($_POST['name'] ?? '');
 
             if (empty($subject) || empty($message)) {
-                $error = 'Please fill in all required fields.';
+                $error = __('fill_required_fields', 'Please fill in all required fields.');
             } elseif (!isset($_SESSION['user_id']) && (empty($guestEmail) || !filter_var($guestEmail, FILTER_VALIDATE_EMAIL))) {
-                $error = 'Please provide a valid email address.';
+                $error = __('valid_email_required', 'Please provide a valid email address.');
             } else {
                 $trackingCode = strtoupper(substr(md5(uniqid(mt_rand(), true)), 0, 3) . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 3) . '-' . substr(md5(uniqid(mt_rand(), true)), 0, 3));
                 $accessToken  = bin2hex(random_bytes(32));
@@ -58,8 +58,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $shouldSend) {
                 if ($stmt->execute([$trackingCode, $accessToken, $userId, $categoryId, $guestEmail, $guestName, $subject, $message])) {
                     $ticketId = $pdo->lastInsertId();
 
-                    // --- AUTOMATIC TICKET ROUTING & AUTO-ASSIGNMENT ---
-                    // Search for an active Agency or Agent with auto-assign enabled
+                    // Automatic ticket routing & auto-assignment to active agency or agent
                     $stmtAutoAssign = $pdo->query("
                         SELECT id 
                         FROM users 
@@ -73,7 +72,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $shouldSend) {
                         $stmtUpdateTicket->execute([$autoAssignUser['id'], $ticketId]);
                     }
 
-                    // --- DISPATCH INTERNAL PLATFORM NOTIFICATIONS ---
+                    // Dispatch internal platform notifications
                     $createdTicket = ['id' => $ticketId, 'assigned_to' => $autoAssignUser['id'] ?? null];
                     notify_ticket_followers(
                         $pdo, 
@@ -128,9 +127,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $shouldSend) {
                         'category_name' => $categoryName
                     ]);
 
-                    $success = "Ticket submitted successfully! Code: <strong>{$trackingCode}</strong>";
+                    $success = __('ticket_submitted_success', 'Ticket submitted successfully! Code:') . " <strong>{$trackingCode}</strong>";
                 } else {
-                    $error = 'Failed to submit the ticket. Please try again later.';
+                    $error = __('ticket_submit_failed', 'Failed to submit the ticket. Please try again later.');
                 }
             }
         }
@@ -148,7 +147,7 @@ require_once __DIR__ . '/includes/sidebar.php';
 
 <main class="main-content">
     <div class="container my-4" style="max-width: 750px;">
-        <h2>Submit a Ticket</h2>
+        <h2><?php echo __('submit_a_ticket', 'Submit a Ticket'); ?></h2>
         <hr>
         <?php if ($error): ?><div class="alert alert-danger" id="submit_error_alert"><?php echo $error; ?></div><?php endif; ?>
         <?php if ($success): ?><div class="alert alert-success"><?php echo $success; ?></div><?php endif; ?>
@@ -159,11 +158,11 @@ require_once __DIR__ . '/includes/sidebar.php';
             <?php if (!isset($_SESSION['user_id'])): ?>
                 <div class="row mb-3">
                     <div class="col-md-6">
-                        <label class="form-label">Your Name</label>
+                        <label class="form-label"><?php echo __('your_name', 'Your Name'); ?></label>
                         <input type="text" name="name" class="form-control" value="<?php echo htmlspecialchars($preName); ?>" required>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Your Email</label>
+                        <label class="form-label"><?php echo __('your_email', 'Your Email'); ?></label>
                         <input type="email" name="email" class="form-control" value="<?php echo htmlspecialchars($preEmail); ?>" required>
                     </div>
                 </div>
@@ -171,13 +170,13 @@ require_once __DIR__ . '/includes/sidebar.php';
 
             <div class="row mb-3">
                 <div class="col-md-8">
-                    <label class="form-label">Subject</label>
+                    <label class="form-label"><?php echo __('subject', 'Subject'); ?></label>
                     <input type="text" name="subject" class="form-control" value="<?php echo htmlspecialchars($preSubject); ?>" required>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">Category</label>
+                    <label class="form-label"><?php echo __('category', 'Category'); ?></label>
                     <select name="category_id" class="form-select" required>
-                        <option value="">Select Category...</option>
+                        <option value=""><?php echo __('select_category', 'Select Category...'); ?></option>
                         <?php foreach ($categories as $cat): ?>
                             <option value="<?php echo $cat['id']; ?>" <?php echo $preCategory === (int)$cat['id'] ? 'selected' : ''; ?>>
                                 <?php echo htmlspecialchars($cat['name']); ?>
@@ -188,7 +187,7 @@ require_once __DIR__ . '/includes/sidebar.php';
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Message</label>
+                <label class="form-label"><?php echo __('message', 'Message'); ?></label>
                 <textarea id="ticket_message" name="message" class="form-control" rows="6"><?php echo htmlspecialchars($preMessage); ?></textarea>
             </div>
 
@@ -201,7 +200,7 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
             <?php endif; ?>
 
-            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> Submit Ticket</button>
+            <button type="submit" class="btn btn-primary"><i class="fa-solid fa-paper-plane me-1"></i> <?php echo __('submit_ticket', 'Submit Ticket'); ?></button>
         </form>
     </div>
 </main>
