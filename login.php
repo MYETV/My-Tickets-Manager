@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $turnstileToken = $_POST['cf-turnstile-response'] ?? '';
         if (!verify_turnstile($pdo, $turnstileToken)) {
-            $error = 'Captcha verification failed.';
+            $error = __('captcha_failed', 'Captcha verification failed.');
         } else {
             $email = trim($_POST['email'] ?? '');
             $password = trim($_POST['password'] ?? '');
@@ -36,16 +36,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($user && $passwordValid) {
                 // 1. Check if user account is Banned
                 if (!empty($user['is_banned'])) {
-                    $error = 'Your account has been suspended or banned. Please contact support.';
+                    $error = __('account_banned', 'Your account has been suspended or banned. Please contact support.');
                 }
                 // 2. Check if account is Approved (Agencies require Admin approval, Agents require Agency approval)
                 elseif (isset($user['is_approved']) && (int)$user['is_approved'] === 0) {
                     if ($user['role'] === 'agency') {
-                        $error = 'Your agency account registration is pending approval by an Administrator. You will be able to log in once approved.';
+                        $error = __('agency_pending_approval', 'Your agency account registration is pending approval by an Administrator. You will be able to log in once approved.');
                     } elseif ($user['role'] === 'agent') {
-                        $error = 'Your agent account registration is pending approval by your Agency Manager. You will be able to log in once approved.';
+                        $error = __('agent_pending_approval', 'Your agent account registration is pending approval by your Agency Manager. You will be able to log in once approved.');
                     } else {
-                        $error = 'Your account is pending approval by an administrator.';
+                        $error = __('account_pending_approval', 'Your account is pending approval by an administrator.');
                     }
                 }
                 // 3. Process 2FA Verification if enabled
@@ -71,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     exit;
                 }
             } else {
-                $error = 'Invalid email or password.';
+                $error = __('invalid_credentials', 'Invalid email or password.');
             }
         }
     }
@@ -91,18 +91,18 @@ $hasSso        = $myetvEnabled || $googleEnabled || $fbEnabled || $msEnabled;
     <div class="container my-5" style="max-width: 450px;">
         <div class="card shadow-sm">
             <div class="card-body">
-                <h3 class="card-title text-center mb-4">Login</h3>
+                <h3 class="card-title text-center mb-4"><?php echo __('login', 'Login'); ?></h3>
                 <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
 
                 <form method="POST" action="login.php">
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
+                        <label class="form-label"><?php echo __('email_address', 'Email Address'); ?></label>
                         <input type="email" name="email" class="form-control" required>
                     </div>
                     <div class="mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-1">
-                            <label class="form-label mb-0">Password</label>
-                            <a href="/forgot_password.php" class="small text-decoration-none">Forgot Password?</a>
+                            <label class="form-label mb-0"><?php echo __('password', 'Password'); ?></label>
+                            <a href="/forgot_password.php" class="small text-decoration-none"><?php echo __('forgot_password', 'Forgot Password?'); ?></a>
                         </div>
                         <input type="password" name="password" class="form-control" required>
                     </div>
@@ -113,7 +113,7 @@ $hasSso        = $myetvEnabled || $googleEnabled || $fbEnabled || $msEnabled;
                         </div>
                     <?php endif; ?>
 
-                    <button type="submit" class="btn btn-primary w-100">Sign In</button>
+                    <button type="submit" class="btn btn-primary w-100"><?php echo __('sign_in', 'Sign In'); ?></button>
                 </form>
 
                 <?php if ($hasSso): ?>
@@ -122,16 +122,16 @@ $hasSso        = $myetvEnabled || $googleEnabled || $fbEnabled || $msEnabled;
                     <!-- SSO Login Options -->
                     <div class="d-grid gap-2">
                         <?php if ($myetvEnabled): ?>
-                            <a href="/auth/myetv-login.php" class="btn btn-outline-dark"><i class="fa-solid fa-tv me-2"></i> Login with MYETV</a>
+                            <a href="/auth/myetv-login.php" class="btn btn-outline-dark"><i class="fa-solid fa-tv me-2"></i> <?php echo __('login_with_myetv', 'Login with MYETV'); ?></a>
                         <?php endif; ?>
                         <?php if ($googleEnabled): ?>
-                            <a href="/auth/google-login.php" class="btn btn-outline-danger"><i class="fa-brands fa-google me-2"></i> Login with Google</a>
+                            <a href="/auth/google-login.php" class="btn btn-outline-danger"><i class="fa-brands fa-google me-2"></i> <?php echo __('login_with_google', 'Login with Google'); ?></a>
                         <?php endif; ?>
                         <?php if ($fbEnabled): ?>
-                            <a href="/auth/facebook-login.php" class="btn btn-outline-primary"><i class="fa-brands fa-facebook me-2"></i> Login with Facebook</a>
+                            <a href="/auth/facebook-login.php" class="btn btn-outline-primary"><i class="fa-brands fa-facebook me-2"></i> <?php echo __('login_with_facebook', 'Login with Facebook'); ?></a>
                         <?php endif; ?>
                         <?php if ($msEnabled): ?>
-                            <a href="/auth/microsoft-login.php" class="btn btn-outline-secondary"><i class="fa-brands fa-microsoft me-2"></i> Login with Microsoft</a>
+                            <a href="/auth/microsoft-login.php" class="btn btn-outline-secondary"><i class="fa-brands fa-microsoft me-2"></i> <?php echo __('login_with_microsoft', 'Login with Microsoft'); ?></a>
                         <?php endif; ?>
                     </div>
                 <?php endif; ?>
