@@ -1,11 +1,13 @@
 <?php
 // track.php
-// Public tracking page with Email verification, Reply capability, Staff status actions, Activity Logging, and Internal Notifications
+// Public tracking page with Email verification, Reply capability, Staff status actions, Activity Logging, and On-demand Translations
 session_start();
 require_once __DIR__ . '/includes/config.php';
 require_once __DIR__ . '/includes/turnstile.php';
 require_once __DIR__ . '/includes/mailer.php';
 require_once __DIR__ . '/includes/notifications_helper.php';
+
+$currentLang = $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? 'en';
 
 $code        = trim($_REQUEST['code'] ?? '');
 $token       = trim($_REQUEST['token'] ?? '');
@@ -22,7 +24,6 @@ if ($userRole === 'agent' && $userId > 0) {
     $hasAgency = (bool)$stmtAgCheck->fetchColumn();
 }
 
-// Full Search Exemption (only Code required): Admin, Agency, or Agent with Agency
 $canSearchWithoutEmail = in_array($userRole, ['admin', 'agency'], true) || ($userRole === 'agent' && $hasAgency);
 $isStaff = in_array($userRole, ['admin', 'agency', 'agent'], true);
 
@@ -33,12 +34,10 @@ $success     = '';
 $isFollowing = false;
 
 if (!empty($code)) {
-    // Independent Agents and Normal Users MUST provide the email address
     if (!$canSearchWithoutEmail && empty($searchEmail)) {
         $error = __('email_required', 'Please enter the email address associated with the ticket.');
     } else {
         if ($canSearchWithoutEmail) {
-            // Full Staff Search by Code only
             if (!empty($token)) {
                 $stmt = $pdo->prepare("SELECT t.*, c.name as category_name FROM tickets t LEFT JOIN categories c ON t.category_id = c.id WHERE t.tracking_code = ? AND t.access_token = ?");
                 $stmt->execute([$code, $token]);
@@ -47,7 +46,6 @@ if (!empty($code)) {
                 $stmt->execute([$code]);
             }
         } else {
-            // Independent Agent / User Search: Requires matching Tracking Code AND Email
             if (!empty($token)) {
                 $stmt = $pdo->prepare("
                     SELECT t.*, c.name as category_name 
@@ -79,7 +77,7 @@ if (!empty($code)) {
         }
     }
 
-    // Staff Toggle Follow/Unfollow Ticket Action
+    // Toggle Follow
     if ($ticket && $isStaff && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['toggle_follow'])) {
         $staffUserId = (int)$_SESSION['user_id'];
         $stmtCheckFollow = $pdo->prepare("SELECT id FROM ticket_followers WHERE ticket_id = ? AND user_id = ?");
@@ -98,14 +96,13 @@ if (!empty($code)) {
         }
     }
 
-    // Check if current logged staff user is following this ticket
     if ($ticket && $isStaff && !isset($_POST['toggle_follow'])) {
         $stmtIsFollow = $pdo->prepare("SELECT id FROM ticket_followers WHERE ticket_id = ? AND user_id = ?");
         $stmtIsFollow->execute([$ticket['id'], $_SESSION['user_id']]);
         $isFollowing = (bool)$stmtIsFollow->fetch();
     }
 
-    // Staff Manual Status Update + Activity Log Insertion
+    // Staff Manual Status Update
     if ($ticket && $isStaff && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['update_status'])) {
         $allowedStatuses = ['open', 'answered', 'customer_reply', 'closed'];
         $newStatus = trim($_POST['status'] ?? '');
@@ -116,14 +113,12 @@ if (!empty($code)) {
             if ($stmtUpdateStatus->execute([$newStatus, $ticket['id']])) {
                 $ticket['status'] = $newStatus;
                 
-                // Log action as a system reply entry
                 $staffName = $_SESSION['username'] ?? 'Staff Member';
                 $logMessage = "<em>System Note: Ticket status changed from <strong>" . strtoupper(str_replace('_', ' ', $oldStatus)) . "</strong> to <strong>" . strtoupper(str_replace('_', ' ', $newStatus)) . "</strong> by <strong>" . htmlspecialchars($staffName) . "</strong> (" . ucfirst($userRole) . ").</em>";
                 
                 $stmtLogReply = $pdo->prepare("INSERT INTO ticket_replies (ticket_id, user_id, message) VALUES (?, ?, ?)");
                 $stmtLogReply->execute([$ticket['id'], $userId, $logMessage]);
 
-                // Notify followers of status change
                 $notifTitle = "Status updated on ticket #" . $ticket['tracking_code'];
                 $notifMsg   = "Status changed to " . strtoupper(str_replace('_', ' ', $newStatus)) . " by " . $staffName;
                 notify_ticket_followers($pdo, $ticket, $notifTitle, $notifMsg, $userId);
@@ -135,7 +130,7 @@ if (!empty($code)) {
         }
     }
 
-    // Handle Reply Submission
+    // Handle Reply
     if ($ticket && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_reply'])) {
         $rateError = '';
         if (!check_rate_limit($pdo, 'reply', $rateError)) {
@@ -156,20 +151,16 @@ if (!empty($code)) {
 
                     $stmtReply = $pdo->prepare("INSERT INTO ticket_replies (ticket_id, user_id, message) VALUES (?, ?, ?)");
                     if ($stmtReply->execute([$ticket['id'], $senderUserId, $replyMessage])) {
-                        
                         $newStatus = $isStaff ? 'answered' : 'customer_reply';
                         $stmtUpdate = $pdo->prepare("UPDATE tickets SET status = ? WHERE id = ?");
                         $stmtUpdate->execute([$newStatus, $ticket['id']]);
 
-                        // Send email notifications to all participants EXCEPT the sender
                         notify_ticket_participants($pdo, $ticket, $replyMessage, $senderEmail);
 
-                        // Dispatch internal platform notification to followers and assignees
                         $notifTitle = "New reply on ticket #" . $ticket['tracking_code'];
                         $notifMsg   = "Reply posted by " . ($senderUserId ? ($_SESSION['username'] ?? 'Staff') : ($ticket['guest_name'] ?: 'Customer'));
                         notify_ticket_followers($pdo, $ticket, $notifTitle, $notifMsg, $senderUserId);
 
-                        // Trigger Plugin Hooks (e.g. Discord)
                         trigger_hook('on_ticket_replied', [
                             'ticket' => $ticket,
                             'reply' => ['message' => $replyMessage],
@@ -208,7 +199,6 @@ require_once __DIR__ . '/includes/sidebar.php';
         <hr>
 
         <?php if ($canSearchWithoutEmail): ?>
-            <!-- Dynamic Role Clean Information Notice -->
             <?php 
                 $roleLabel = match($userRole) {
                     'admin'  => 'Admin',
@@ -221,7 +211,6 @@ require_once __DIR__ . '/includes/sidebar.php';
                 <i class="fa-solid fa-circle-info me-1"></i> You are logged in as an <strong><?php echo $roleLabel; ?></strong>, so you can search tickets using only the Tracking Code.
             </div>
         <?php elseif ($userRole === 'agent'): ?>
-            <!-- Independent Agent Notice -->
             <div class="alert alert-warning py-2 small mb-3">
                 <i class="fa-solid fa-triangle-exclamation me-1"></i> As an independent <strong>Agent</strong> (no agency assigned), you must enter both the Tracking Code and the associated Email address to search for tickets.
             </div>
@@ -252,19 +241,39 @@ require_once __DIR__ . '/includes/sidebar.php';
         <?php if ($success): ?><div class="alert alert-success"><?php echo $success; ?></div><?php endif; ?>
 
         <?php if ($ticket): ?>
-            <div class="card mb-4 shadow-sm">
+            <!-- Main Ticket Box -->
+            <div class="card mb-4 shadow-sm" id="ticket_box">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h5 class="m-0">[#<?php echo htmlspecialchars($ticket['tracking_code']); ?>] <?php echo htmlspecialchars($ticket['subject']); ?></h5>
                     <span class="badge bg-info text-dark"><?php echo strtoupper($ticket['status']); ?></span>
                 </div>
                 <div class="card-body">
-                    <div class="ticket-description mb-3"><?php echo $ticket['message']; ?></div>
+                    <!-- Original Content Area -->
+                    <div class="ticket-description mb-3 content-original"><?php echo $ticket['message']; ?></div>
+                    
+                    <!-- Translation Container (Hidden by default) -->
+                    <div class="content-translated alert alert-light border p-3 mb-3 d-none">
+                        <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                            <small class="text-primary fw-bold"><i class="fa-solid fa-language me-1"></i> Translated content (<?php echo strtoupper($currentLang); ?>) <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span></small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
+                        </div>
+                        <div class="translated-text"></div>
+                    </div>
+
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                        <small class="text-muted">Submitted on: <?php echo $ticket['created_at']; ?> | Category: <strong><?php echo htmlspecialchars($ticket['category_name'] ?? 'General'); ?></strong></small>
+                        <div class="d-flex align-items-center gap-3">
+                            <small class="text-muted">Submitted on: <?php echo $ticket['created_at']; ?> | Category: <strong><?php echo htmlspecialchars($ticket['category_name'] ?? 'General'); ?></strong></small>
+                            
+                            <!-- Translation Trigger Button -->
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-translate" 
+                                    data-item-type="ticket_message" 
+                                    data-item-id="<?php echo $ticket['id']; ?>">
+                                <i class="fa-solid fa-language me-1"></i> Translate to <?php echo strtoupper($currentLang); ?>
+                            </button>
+                        </div>
 
                         <div class="d-flex align-items-center gap-2">
                             <?php if ($isStaff): ?>
-                                <!-- Follow / Unfollow Ticket Button for Staff -->
                                 <form method="POST" action="track.php?code=<?php echo urlencode($code); ?>&token=<?php echo urlencode($token); ?>&email=<?php echo urlencode($searchEmail); ?>" class="d-inline">
                                     <input type="hidden" name="toggle_follow" value="1">
                                     <button type="submit" class="btn btn-sm <?php echo $isFollowing ? 'btn-warning' : 'btn-outline-warning'; ?>">
@@ -273,7 +282,6 @@ require_once __DIR__ . '/includes/sidebar.php';
                                     </button>
                                 </form>
 
-                                <!-- Staff Quick Status Change Control -->
                                 <form method="POST" action="track.php?code=<?php echo urlencode($code); ?>&token=<?php echo urlencode($token); ?>&email=<?php echo urlencode($searchEmail); ?>" class="d-flex align-items-center gap-2">
                                     <input type="hidden" name="update_status" value="1">
                                     <select name="status" class="form-select form-select-sm" style="width: auto;">
@@ -290,10 +298,11 @@ require_once __DIR__ . '/includes/sidebar.php';
                 </div>
             </div>
 
+            <!-- Replies Section -->
             <h4 class="mb-3"><?php echo __('replies', 'Replies & Activity'); ?></h4>
             <?php foreach ($replies as $reply): ?>
-                <div class="card mb-3 <?php echo $reply['user_id'] ? 'border-primary' : ''; ?>">
-                    <div class="card-header py-1 bg-light d-flex justify-content-between">
+                <div class="card mb-3 <?php echo $reply['user_id'] ? 'border-primary' : ''; ?>" id="reply_<?php echo $reply['id']; ?>">
+                    <div class="card-header py-1 bg-light d-flex justify-content-between align-items-center">
                         <strong>
                             <?php if ($reply['username']): ?>
                                 <?php echo htmlspecialchars($reply['username']); ?> 
@@ -302,10 +311,28 @@ require_once __DIR__ . '/includes/sidebar.php';
                                 <?php echo htmlspecialchars($ticket['guest_name'] ?: 'Customer'); ?>
                             <?php endif; ?>
                         </strong>
-                        <small class="text-muted"><?php echo $reply['created_at']; ?></small>
+                        <div class="d-flex align-items-center gap-2">
+                            <small class="text-muted"><?php echo $reply['created_at']; ?></small>
+                            <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-translate ms-2" 
+                                    data-item-type="reply_message" 
+                                    data-item-id="<?php echo $reply['id']; ?>"
+                                    title="Translate into <?php echo strtoupper($currentLang); ?>">
+                                <i class="fa-solid fa-language text-secondary"></i>
+                            </button>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div><?php echo $reply['message']; ?></div>
+                        <!-- Reply Original Content -->
+                        <div class="content-original"><?php echo $reply['message']; ?></div>
+
+                        <!-- Reply Translated Box -->
+                        <div class="content-translated alert alert-light border p-2 mt-2 d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                                <small class="text-primary fw-bold"><i class="fa-solid fa-language me-1"></i> Translated (<?php echo strtoupper($currentLang); ?>) <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span></small>
+                                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
+                            </div>
+                            <div class="translated-text"></div>
+                        </div>
                     </div>
                 </div>
             <?php endforeach; ?>
@@ -353,8 +380,8 @@ require_once __DIR__ . '/includes/sidebar.php';
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
+        // WYSIWYG Init
         let editorInstance = null;
-
         if (typeof MyWysiwyg !== 'undefined' && document.getElementById('reply_message')) {
             editorInstance = new MyWysiwyg('#reply_message', {
                 lang: '<?php echo htmlspecialchars($currentLang ?? "en"); ?>',
@@ -362,9 +389,9 @@ require_once __DIR__ . '/includes/sidebar.php';
             });
         }
 
+        // AI Suggestion Handler
         const btnAI = document.getElementById('btn_generate_ai');
         const spinner = document.getElementById('ai_spinner');
-
         if (btnAI) {
             btnAI.addEventListener('click', function() {
                 btnAI.disabled = true;
@@ -373,15 +400,11 @@ require_once __DIR__ . '/includes/sidebar.php';
                 const formData = new FormData();
                 formData.append('ticket_id', '<?php echo $ticket['id'] ?? 0; ?>');
 
-                fetch('/api/generate_ai_reply.php', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
+                fetch('/api/generate_ai_reply.php', { method: 'POST', body: formData })
+                .then(r => r.json())
                 .then(data => {
                     btnAI.disabled = false;
                     if (spinner) spinner.classList.add('d-none');
-
                     if (data.success && data.reply) {
                         if (editorInstance && typeof editorInstance.setHtml === 'function') {
                             editorInstance.setHtml(data.reply);
@@ -392,13 +415,80 @@ require_once __DIR__ . '/includes/sidebar.php';
                         alert('AI Error: ' + (data.error || 'Failed to generate response.'));
                     }
                 })
-                .catch(err => {
+                .catch(() => {
                     btnAI.disabled = false;
                     if (spinner) spinner.classList.add('d-none');
                     alert('Server connection error while calling AI.');
                 });
             });
         }
+
+        // On-Demand Translation via LibreTranslate & MySQL Cache
+        const targetLang = '<?php echo htmlspecialchars($currentLang); ?>';
+        const ticketCode = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
+        const ticketToken= '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
+
+        document.querySelectorAll('.btn-translate').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const itemType = this.getAttribute('data-item-type');
+                const itemId   = this.getAttribute('data-item-id');
+                const cardBody = this.closest('.card-body') || this.closest('.card');
+                
+                const origBox  = cardBody.querySelector('.content-original');
+                const transBox = cardBody.querySelector('.content-translated');
+                const transText= transBox.querySelector('.translated-text');
+                const cacheBadge = transBox.querySelector('.cache-badge');
+
+                const origBtnHtml = this.innerHTML;
+                this.disabled = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Translating...';
+
+                const formData = new FormData();
+                formData.append('item_type', itemType);
+                formData.append('item_id', itemId);
+                formData.append('target_lang', targetLang);
+                formData.append('code', ticketCode);
+                formData.append('token', ticketToken);
+
+                fetch('/api/translate.php', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(res => res.json())
+                .then(res => {
+                    this.disabled = false;
+                    this.innerHTML = origBtnHtml;
+
+                    if (res.success && res.translated) {
+                        transText.innerHTML = res.translated;
+                        if (cacheBadge) {
+                            cacheBadge.textContent = res.cached ? 'cached' : 'live';
+                        }
+                        origBox.classList.add('d-none');
+                        transBox.classList.remove('d-none');
+                    } else {
+                        alert('Translation Error: ' + (res.error || 'Failed to translate.'));
+                    }
+                })
+                .catch(() => {
+                    this.disabled = false;
+                    this.innerHTML = origBtnHtml;
+                    alert('Communication error with the translation service.');
+                });
+            });
+        });
+
+        // Restore Original Text Toggle
+        document.querySelectorAll('.btn-restore-orig').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const cardBody = this.closest('.card-body') || this.closest('.card');
+                const origBox  = cardBody.querySelector('.content-original');
+                const transBox = cardBody.querySelector('.content-translated');
+                
+                transBox.classList.add('d-none');
+                origBox.classList.remove('d-none');
+            });
+        });
     });
 </script>
 
