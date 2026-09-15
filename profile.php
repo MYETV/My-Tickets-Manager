@@ -39,15 +39,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $username = trim($_POST['username'] ?? '');
 
         if (empty($username)) {
-            $error = 'Username cannot be empty.';
+            $error = __('username_empty', 'Username cannot be empty.');
         } else {
             $stmtUpdate = $pdo->prepare("UPDATE users SET username = ? WHERE id = ?");
             if ($stmtUpdate->execute([$username, $userId])) {
                 $_SESSION['username'] = $username;
                 $user['username'] = $username;
-                $success = 'Profile information updated successfully.';
+                $success = __('profile_updated', 'Profile information updated successfully.');
             } else {
-                $error = 'Failed to update profile information.';
+                $error = __('profile_update_failed', 'Failed to update profile information.');
             }
         }
     }
@@ -59,9 +59,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $stmtAssign = $pdo->prepare("UPDATE users SET auto_assign_tickets = ? WHERE id = ?");
         if ($stmtAssign->execute([$autoAssign, $userId])) {
             $user['auto_assign_tickets'] = $autoAssign;
-            $success = 'Ticket management preferences updated successfully.';
+            $success = __('preferences_updated', 'Ticket management preferences updated successfully.');
         } else {
-            $error = 'Failed to update auto-assignment setting.';
+            $error = __('preferences_update_failed', 'Failed to update auto-assignment setting.');
         }
     }
 
@@ -72,21 +72,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $confirmPassword = $_POST['confirm_password'] ?? '';
 
         if (empty($currentPassword) || empty($newPassword) || empty($confirmPassword)) {
-            $error = 'Please fill in all password fields.';
+            $error = __('fill_password_fields', 'Please fill in all password fields.');
         } elseif (!password_verify($currentPassword, $user['password_hash'])) {
-            $error = 'Current password is incorrect.';
+            $error = __('current_password_incorrect', 'Current password is incorrect.');
         } elseif ($newPassword !== $confirmPassword) {
-            $error = 'New password and confirmation do not match.';
+            $error = __('passwords_do_not_match', 'New password and confirmation do not match.');
         } elseif (strlen($newPassword) < 8) {
-            $error = 'New password must be at least 8 characters long.';
+            $error = __('password_min_length', 'New password must be at least 8 characters long.');
         } else {
             $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
             $stmtPass = $pdo->prepare("UPDATE users SET password_hash = ? WHERE id = ?");
             if ($stmtPass->execute([$hashedPassword, $userId])) {
                 $user['password_hash'] = $hashedPassword;
-                $success = 'Password changed successfully.';
+                $success = __('password_changed_success', 'Password changed successfully.');
             } else {
-                $error = 'Failed to update password.';
+                $error = __('password_update_failed', 'Failed to update password.');
             }
         }
     }
@@ -102,9 +102,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($_SESSION['temp_2fa_secret']);
             $user['two_factor_enabled'] = 1;
             $user['two_factor_secret']  = $tempSecret;
-            $success = 'Two-Factor Authentication (2FA) has been enabled for your account.';
+            $success = __('two_factor_enabled_success', 'Two-Factor Authentication (2FA) has been enabled for your account.');
         } else {
-            $error = 'Invalid 2FA Verification Code. Please try again.';
+            $error = __('invalid_totp_code', 'Invalid 2FA Verification Code. Please try again.');
         }
     }
 
@@ -116,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $user['two_factor_enabled'] = 0;
         $user['two_factor_secret']  = null;
         $_SESSION['temp_2fa_secret'] = generate_totp_secret();
-        $success = 'Two-Factor Authentication (2FA) has been disabled.';
+        $success = __('two_factor_disabled_success', 'Two-Factor Authentication (2FA) has been disabled.');
     }
 }
 
@@ -129,7 +129,7 @@ require_once __DIR__ . '/includes/sidebar.php';
 
 <main class="main-content">
     <div class="container my-4" style="max-width: 800px;">
-        <h2><i class="fa-solid fa-user-gear me-2"></i> Account Settings</h2>
+        <h2><i class="fa-solid fa-user-gear me-2"></i> <?php echo __('account_settings', 'Account Settings'); ?></h2>
         <hr>
 
         <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
@@ -138,23 +138,23 @@ require_once __DIR__ . '/includes/sidebar.php';
         <!-- Personal Information Card -->
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-dark text-white">
-                <i class="fa-solid fa-id-card me-1"></i> Personal Information
+                <i class="fa-solid fa-id-card me-1"></i> <?php echo __('personal_information', 'Personal Information'); ?>
             </div>
             <div class="card-body">
                 <form method="POST" action="profile.php">
                     <input type="hidden" name="action" value="update_profile">
                     
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
+                        <label class="form-label"><?php echo __('email_address', 'Email Address'); ?></label>
                         <input type="email" class="form-control bg-light" value="<?php echo htmlspecialchars($user['email']); ?>" readonly>
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Username / Display Name</label>
+                        <label class="form-label"><?php echo __('username_display_name', 'Username / Display Name'); ?></label>
                         <input type="text" name="username" class="form-control" value="<?php echo htmlspecialchars($user['username']); ?>" required>
                     </div>
 
-                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Save Information</button>
+                    <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> <?php echo __('save_information', 'Save Information'); ?></button>
                 </form>
             </div>
         </div>
@@ -163,7 +163,7 @@ require_once __DIR__ . '/includes/sidebar.php';
         <?php if (in_array($user['role'], ['admin', 'agency', 'agent'], true)): ?>
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-dark text-white fw-bold">
-                    <i class="fa-solid fa-robot me-1"></i> Ticket Management Settings
+                    <i class="fa-solid fa-robot me-1"></i> <?php echo __('ticket_management_settings', 'Ticket Management Settings'); ?>
                 </div>
                 <div class="card-body">
                     <form method="POST" action="profile.php">
@@ -172,19 +172,19 @@ require_once __DIR__ . '/includes/sidebar.php';
                         <div class="form-check form-switch mb-3">
                             <input class="form-check-input" type="checkbox" name="auto_assign_tickets" value="1" id="autoAssignSwitch" <?php echo !empty($user['auto_assign_tickets']) ? 'checked' : ''; ?>>
                             <label class="form-check-label fw-bold" for="autoAssignSwitch">
-                                Automatically assign new incoming tickets to my account
+                                <?php echo __('auto_assign_tickets_label', 'Automatically assign new incoming tickets to my account'); ?>
                             </label>
                         </div>
                         
                         <p class="text-muted small mb-3">
                             <?php if ($user['role'] === 'agency'): ?>
-                                When enabled, new tickets will be automatically assigned to your agency upon creation and will instantly become accessible to all your agents.
+                                <?php echo __('auto_assign_agency_help', 'When enabled, new tickets will be automatically assigned to your agency upon creation and will instantly become accessible to all your agents.'); ?>
                             <?php else: ?>
-                                When enabled, new incoming tickets will be automatically assigned directly to your agent account upon submission.
+                                <?php echo __('auto_assign_agent_help', 'When enabled, new incoming tickets will be automatically assigned directly to your agent account upon submission.'); ?>
                             <?php endif; ?>
                         </p>
 
-                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> Save Preferences</button>
+                        <button type="submit" class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i> <?php echo __('save_preferences', 'Save Preferences'); ?></button>
                     </form>
                 </div>
             </div>
@@ -193,29 +193,29 @@ require_once __DIR__ . '/includes/sidebar.php';
         <!-- Security & Password Card -->
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-secondary text-white">
-                <i class="fa-solid fa-key me-1"></i> Security & Change Password
+                <i class="fa-solid fa-key me-1"></i> <?php echo __('security_change_password', 'Security & Change Password'); ?>
             </div>
             <div class="card-body">
                 <form method="POST" action="profile.php">
                     <input type="hidden" name="action" value="change_password">
 
                     <div class="mb-3">
-                        <label class="form-label">Current Password</label>
+                        <label class="form-label"><?php echo __('current_password', 'Current Password'); ?></label>
                         <input type="password" name="current_password" class="form-control" required>
                     </div>
 
                     <div class="row mb-3">
                         <div class="col-md-6">
-                            <label class="form-label">New Password</label>
+                            <label class="form-label"><?php echo __('new_password', 'New Password'); ?></label>
                             <input type="password" name="new_password" class="form-control" required minlength="8">
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Confirm New Password</label>
+                            <label class="form-label"><?php echo __('confirm_new_password', 'Confirm New Password'); ?></label>
                             <input type="password" name="confirm_password" class="form-control" required minlength="8">
                         </div>
                     </div>
 
-                    <button type="submit" class="btn btn-warning"><i class="fa-solid fa-shield-halved me-1"></i> Update Password</button>
+                    <button type="submit" class="btn btn-warning"><i class="fa-solid fa-shield-halved me-1"></i> <?php echo __('update_password', 'Update Password'); ?></button>
                 </form>
             </div>
         </div>
@@ -223,40 +223,40 @@ require_once __DIR__ . '/includes/sidebar.php';
         <!-- Two-Factor Authentication (2FA) Card -->
         <div class="card mb-4 shadow-sm">
             <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
-                <span><i class="fa-solid fa-mobile-screen-button me-1"></i> Two-Factor Authentication (2FA)</span>
+                <span><i class="fa-solid fa-mobile-screen-button me-1"></i> <?php echo __('two_factor_auth', 'Two-Factor Authentication (2FA)'); ?></span>
                 <?php if ($user['two_factor_enabled']): ?>
-                    <span class="badge bg-success">Active</span>
+                    <span class="badge bg-success"><?php echo __('active', 'Active'); ?></span>
                 <?php else: ?>
-                    <span class="badge bg-secondary">Disabled</span>
+                    <span class="badge bg-secondary"><?php echo __('disabled', 'Disabled'); ?></span>
                 <?php endif; ?>
             </div>
             <div class="card-body">
                 <?php if ($user['two_factor_enabled']): ?>
                     <div class="alert alert-success">
-                        <i class="fa-solid fa-circle-check me-1"></i> Two-Factor Authentication is currently active on your account.
+                        <i class="fa-solid fa-circle-check me-1"></i> <?php echo __('two_factor_active_notice', 'Two-Factor Authentication is currently active on your account.'); ?>
                     </div>
                     <form method="POST" action="profile.php">
                         <input type="hidden" name="action" value="disable_2fa">
-                        <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to disable 2FA?');">
-                            <i class="fa-solid fa-lock-open me-1"></i> Disable Two-Factor Authentication
+                        <button type="submit" class="btn btn-danger" onclick="return confirm('<?php echo addslashes(__('confirm_disable_2fa', 'Are you sure you want to disable 2FA?')); ?>');">
+                            <i class="fa-solid fa-lock-open me-1"></i> <?php echo __('disable_2fa', 'Disable Two-Factor Authentication'); ?>
                         </button>
                     </form>
                 <?php else: ?>
-                    <p>To enable 2FA, scan the QR code below with your Authenticator App (Google Authenticator, Authy, etc.) and enter the generated 6-digit code to confirm setup.</p>
+                    <p><?php echo __('enable_2fa_instructions', 'To enable 2FA, scan the QR code below with your Authenticator App (Google Authenticator, Authy, etc.) and enter the generated 6-digit code to confirm setup.'); ?></p>
                     
                     <div class="row align-items-center mb-3">
                         <div class="col-md-4 text-center">
                             <div id="qrcode" class="p-2 border bg-white d-inline-block rounded"></div>
                         </div>
                         <div class="col-md-8">
-                            <p class="mb-1"><strong>Secret Key (Manual Entry):</strong></p>
+                            <p class="mb-1"><strong><?php echo __('secret_key_manual', 'Secret Key (Manual Entry):'); ?></strong></p>
                             <code class="fs-5 bg-light p-2 rounded d-block mb-3 text-break"><?php echo htmlspecialchars($tempSecret); ?></code>
 
                             <form method="POST" action="profile.php">
                                 <input type="hidden" name="action" value="enable_2fa">
                                 <div class="input-group mb-2">
-                                    <input type="text" name="totp_code" class="form-control" placeholder="Enter 6-digit code" maxlength="6" required autocomplete="off">
-                                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-check me-1"></i> Verify & Enable 2FA</button>
+                                    <input type="text" name="totp_code" class="form-control" placeholder="<?php echo __('enter_totp_code', 'Enter 6-digit code'); ?>" maxlength="6" required autocomplete="off">
+                                    <button type="submit" class="btn btn-success"><i class="fa-solid fa-check me-1"></i> <?php echo __('verify_enable_2fa', 'Verify & Enable 2FA'); ?></button>
                                 </div>
                             </form>
                         </div>
