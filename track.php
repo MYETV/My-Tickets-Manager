@@ -129,7 +129,7 @@ if (!empty($code)) {
         }
     }
 
-    // Handle Reply
+    // Handle Reply Submission
     if ($ticket && $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_reply'])) {
         $rateError = '';
         if (!check_rate_limit($pdo, 'reply', $rateError)) {
@@ -186,7 +186,7 @@ if (!empty($code)) {
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 
-// Detect active language from header/app
+// Detect active language from header/app environment
 $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_COOKIE['lang'] ?? 'en';
 ?>
 
@@ -394,7 +394,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
 
 <script>
     document.addEventListener("DOMContentLoaded", function() {
-        // Init WYSIWYG
+        // Initialize WYSIWYG editor
         let editorInstance = null;
         if (typeof MyWysiwyg !== 'undefined' && document.getElementById('reply_message')) {
             editorInstance = new MyWysiwyg('#reply_message', {
@@ -403,7 +403,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             });
         }
 
-        // Helper: ricava la lingua dalla select dell'header oppure dal valore PHP
+        // Helper: retrieve active language code from header select element or fallback to PHP variable
         function getSelectedHeaderLang() {
             const select = document.querySelector('select[name="lang"], select#lang_select, select.language-selector');
             if (select && select.value) {
@@ -412,7 +412,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             return '<?php echo htmlspecialchars($activeLang); ?>';
         }
 
-        // AI Reply Generator
+        // Asynchronous AI reply generator handler
         const btnAI = document.getElementById('btn_generate_ai');
         const spinner = document.getElementById('ai_spinner');
         if (btnAI) {
@@ -449,7 +449,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
         const ticketCode  = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
         const ticketToken = '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
 
-        // Funzione per mostrare l'originale
+        // Helper: restore original message display
         function restoreOriginal(card) {
             const origBox     = card.querySelector('.content-original');
             const transBox    = card.querySelector('.content-translated');
@@ -466,7 +466,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             }
         }
 
-        // Funzione per mostrare la traduzione
+        // Helper: render translated message display and update toggle button state
         function showTranslation(card) {
             const origBox     = card.querySelector('.content-original');
             const transBox    = card.querySelector('.content-translated');
@@ -482,7 +482,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             }
         }
 
-        // Click sul pulsante Translate Toggle (interruttore Traduci / Mostra Originale)
+        // Translate Toggle Button click handler (Translate / Show Original switch)
         document.querySelectorAll('.btn-translate-toggle').forEach(btn => {
             btn.addEventListener('click', function() {
                 const card       = this.closest('.card-body') || this.closest('.card');
@@ -493,19 +493,19 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                 const state      = this.getAttribute('data-state') || 'original';
                 const targetLang = getSelectedHeaderLang();
 
-                // Se è già tradotto e visualizzato, cliccando torniamo all'originale
+                // If currently showing translated text, clicking toggles back to original
                 if (state === 'translated') {
                     restoreOriginal(card);
                     return;
                 }
 
-                // Se abbiamo già tradotto questo blocco in precedenza, non richiamiamo l'API, scambiamo subito
+                // If translation was already loaded previously, switch instantly without hitting the API
                 if (transText.innerHTML.trim() !== '') {
                     showTranslation(card);
                     return;
                 }
 
-                // Prima traduzione: chiamata all'API
+                // Initial translation request
                 const itemType    = this.getAttribute('data-item-type');
                 const itemId      = this.getAttribute('data-item-id');
                 const origBtnHtml = this.innerHTML;
@@ -548,7 +548,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             });
         });
 
-        // Click sul pulsante "Show Original" interno al box tradotto
+        // Dedicated "Show Original" button click handler inside translation box
         document.querySelectorAll('.btn-restore-orig').forEach(btn => {
             btn.addEventListener('click', function() {
                 const card = this.closest('.card-body') || this.closest('.card');
