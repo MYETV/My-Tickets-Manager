@@ -186,7 +186,7 @@ if (!empty($code)) {
 require_once __DIR__ . '/includes/header.php';
 require_once __DIR__ . '/includes/sidebar.php';
 
-// Detect active language after loading header.php
+// Detect active language from header/app
 $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_COOKIE['lang'] ?? 'en';
 ?>
 
@@ -243,37 +243,40 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
         <?php if ($success): ?><div class="alert alert-success"><?php echo $success; ?></div><?php endif; ?>
 
         <?php if ($ticket): ?>
-            <!-- Main Ticket Box -->
+            <!-- Main Ticket Container -->
             <div class="card mb-4 shadow-sm" id="ticket_box">
                 <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                     <h5 class="m-0">[#<?php echo htmlspecialchars($ticket['tracking_code']); ?>] <?php echo htmlspecialchars($ticket['subject']); ?></h5>
                     <span class="badge bg-info text-dark"><?php echo strtoupper($ticket['status']); ?></span>
                 </div>
                 <div class="card-body">
-                    <!-- Original Message Box -->
+                    <!-- Original Message Content -->
                     <div class="ticket-description mb-3 content-original"><?php echo $ticket['message']; ?></div>
                     
-                    <!-- Translated Message Box (Hidden by default) -->
+                    <!-- Translated Content Area (Hidden initially) -->
                     <div class="content-translated alert alert-light border p-3 mb-3 d-none">
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                             <small class="text-primary fw-bold">
                                 <i class="fa-solid fa-language me-1"></i> Translated content (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
                                 <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
                             </small>
-                            <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary btn-restore-orig">
+                                <i class="fa-solid fa-rotate-left me-1"></i> Show Original
+                            </button>
                         </div>
                         <div class="translated-text"></div>
                     </div>
 
-                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <!-- Ticket Footer with Translate Action -->
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
                         <div class="d-flex align-items-center gap-3">
                             <small class="text-muted">Submitted on: <?php echo $ticket['created_at']; ?> | Category: <strong><?php echo htmlspecialchars($ticket['category_name'] ?? 'General'); ?></strong></small>
                             
-                            <!-- On-demand Translate Button -->
-                            <button type="button" class="btn btn-sm btn-outline-primary btn-translate" 
+                            <!-- Main Ticket Translate Toggle Button -->
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-translate-toggle" 
                                     data-item-type="ticket_message" 
                                     data-item-id="<?php echo $ticket['id']; ?>">
-                                <i class="fa-solid fa-language me-1"></i> Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)
+                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
                             </button>
                         </div>
 
@@ -316,30 +319,33 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                                 <?php echo htmlspecialchars($ticket['guest_name'] ?: 'Customer'); ?>
                             <?php endif; ?>
                         </strong>
-                        <div class="d-flex align-items-center gap-2">
-                            <small class="text-muted"><?php echo $reply['created_at']; ?></small>
-                            <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 btn-translate" 
-                                    data-item-type="reply_message" 
-                                    data-item-id="<?php echo $reply['id']; ?>"
-                                    title="Translate">
-                                <i class="fa-solid fa-language me-1"></i> <span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>
-                            </button>
-                        </div>
+                        <small class="text-muted"><?php echo $reply['created_at']; ?></small>
                     </div>
                     <div class="card-body">
                         <!-- Reply Original Message -->
-                        <div class="content-original"><?php echo $reply['message']; ?></div>
+                        <div class="content-original mb-2"><?php echo $reply['message']; ?></div>
 
-                        <!-- Reply Translated Box -->
-                        <div class="content-translated alert alert-light border p-2 mt-2 d-none">
-                            <div class="d-flex justify-content-between align-items-center mb-1 pb-1 border-bottom">
+                        <!-- Reply Translated Box (Hidden initially) -->
+                        <div class="content-translated alert alert-light border p-3 mb-2 d-none">
+                            <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                                 <small class="text-primary fw-bold">
                                     <i class="fa-solid fa-language me-1"></i> Translated (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
                                     <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
                                 </small>
-                                <button type="button" class="btn btn-sm btn-link p-0 text-decoration-none btn-restore-orig">Show Original</button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary btn-restore-orig">
+                                    <i class="fa-solid fa-rotate-left me-1"></i> Show Original
+                                </button>
                             </div>
                             <div class="translated-text"></div>
+                        </div>
+
+                        <!-- Reply Action Bar with Translate Toggle -->
+                        <div class="d-flex justify-content-end pt-1">
+                            <button type="button" class="btn btn-sm btn-outline-primary btn-translate-toggle" 
+                                    data-item-type="reply_message" 
+                                    data-item-id="<?php echo $reply['id']; ?>">
+                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -397,7 +403,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             });
         }
 
-        // Helper per ottenere la lingua attualmente attiva dalla select dell'header
+        // Helper: ricava la lingua dalla select dell'header oppure dal valore PHP
         function getSelectedHeaderLang() {
             const select = document.querySelector('select[name="lang"], select#lang_select, select.language-selector');
             if (select && select.value) {
@@ -440,26 +446,72 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             });
         }
 
-        // Gestione Traduzioni On-Demand tramite LibreTranslate e Cache MySQL
         const ticketCode  = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
         const ticketToken = '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
 
-        document.querySelectorAll('.btn-translate').forEach(btn => {
+        // Funzione per mostrare l'originale
+        function restoreOriginal(card) {
+            const origBox     = card.querySelector('.content-original');
+            const transBox    = card.querySelector('.content-translated');
+            const toggleBtn   = card.querySelector('.btn-translate-toggle');
+            const targetLang  = getSelectedHeaderLang().toUpperCase();
+
+            transBox.classList.add('d-none');
+            origBox.classList.remove('d-none');
+
+            if (toggleBtn) {
+                toggleBtn.setAttribute('data-state', 'original');
+                toggleBtn.className = 'btn btn-sm btn-outline-primary btn-translate-toggle';
+                toggleBtn.innerHTML = `<i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (${targetLang})</span>`;
+            }
+        }
+
+        // Funzione per mostrare la traduzione
+        function showTranslation(card) {
+            const origBox     = card.querySelector('.content-original');
+            const transBox    = card.querySelector('.content-translated');
+            const toggleBtn   = card.querySelector('.btn-translate-toggle');
+
+            origBox.classList.add('d-none');
+            transBox.classList.remove('d-none');
+
+            if (toggleBtn) {
+                toggleBtn.setAttribute('data-state', 'translated');
+                toggleBtn.className = 'btn btn-sm btn-outline-warning btn-translate-toggle';
+                toggleBtn.innerHTML = `<i class="fa-solid fa-rotate-left me-1"></i> <span class="btn-text">Show Original</span>`;
+            }
+        }
+
+        // Click sul pulsante Translate Toggle (interruttore Traduci / Mostra Originale)
+        document.querySelectorAll('.btn-translate-toggle').forEach(btn => {
             btn.addEventListener('click', function() {
-                const targetLang = getSelectedHeaderLang();
-                const itemType = this.getAttribute('data-item-type');
-                const itemId   = this.getAttribute('data-item-id');
-                const cardBody = this.closest('.card-body') || this.closest('.card');
-                
-                const origBox    = cardBody.querySelector('.content-original');
-                const transBox   = cardBody.querySelector('.content-translated');
+                const card       = this.closest('.card-body') || this.closest('.card');
+                const transBox   = card.querySelector('.content-translated');
                 const transText  = transBox.querySelector('.translated-text');
                 const cacheBadge = transBox.querySelector('.cache-badge');
                 const langLabels = transBox.querySelectorAll('.target-lang-label');
+                const state      = this.getAttribute('data-state') || 'original';
+                const targetLang = getSelectedHeaderLang();
 
+                // Se è già tradotto e visualizzato, cliccando torniamo all'originale
+                if (state === 'translated') {
+                    restoreOriginal(card);
+                    return;
+                }
+
+                // Se abbiamo già tradotto questo blocco in precedenza, non richiamiamo l'API, scambiamo subito
+                if (transText.innerHTML.trim() !== '') {
+                    showTranslation(card);
+                    return;
+                }
+
+                // Prima traduzione: chiamata all'API
+                const itemType    = this.getAttribute('data-item-type');
+                const itemId      = this.getAttribute('data-item-id');
                 const origBtnHtml = this.innerHTML;
-                this.disabled = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span>';
+
+                this.disabled  = true;
+                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Translating...';
 
                 const formData = new FormData();
                 formData.append('item_type', itemType);
@@ -475,7 +527,6 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                 .then(res => res.json())
                 .then(res => {
                     this.disabled = false;
-                    this.innerHTML = origBtnHtml;
 
                     if (res.success && res.translated) {
                         transText.innerHTML = res.translated;
@@ -483,29 +534,25 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                         if (cacheBadge) {
                             cacheBadge.textContent = res.cached ? 'cached' : 'live';
                         }
-                        origBox.classList.add('d-none');
-                        transBox.classList.remove('d-none');
+                        showTranslation(card);
                     } else {
+                        this.innerHTML = origBtnHtml;
                         alert('Translation Error: ' + (res.error || 'Failed to translate.'));
                     }
                 })
                 .catch(() => {
                     this.disabled = false;
                     this.innerHTML = origBtnHtml;
-                    alert('Communication error with translation API.');
+                    alert('Communication error with the translation API.');
                 });
             });
         });
 
-        // Ripristina testo originale
+        // Click sul pulsante "Show Original" interno al box tradotto
         document.querySelectorAll('.btn-restore-orig').forEach(btn => {
             btn.addEventListener('click', function() {
-                const cardBody = this.closest('.card-body') || this.closest('.card');
-                const origBox  = cardBody.querySelector('.content-original');
-                const transBox = cardBody.querySelector('.content-translated');
-                
-                transBox.classList.add('d-none');
-                origBox.classList.remove('d-none');
+                const card = this.closest('.card-body') || this.closest('.card');
+                restoreOriginal(card);
             });
         });
     });
