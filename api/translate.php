@@ -10,9 +10,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     exit;
 }
 
-$itemType   = trim($_POST['item_type'] ?? ''); // 'ticket_message' o 'reply_message'
+$itemType   = trim($_POST['item_type'] ?? '');
 $itemId     = (int)($_POST['item_id'] ?? 0);
-$targetLang = strtolower(trim($_POST['target_lang'] ?? ''));
+$targetLang = preg_replace('/[^a-z0-9_-]/i', '', strtolower(trim($_POST['target_lang'] ?? '')));
 $code       = trim($_POST['code'] ?? '');
 $token      = trim($_POST['token'] ?? '');
 
@@ -21,11 +21,9 @@ if (!$itemId || !in_array($itemType, ['ticket_message', 'reply_message'], true) 
     exit;
 }
 
-// 1. Controllo Autorizzazione / Accesso al Ticket
+// 1. Controllo Permessi / Accesso al Ticket
 $userRole = $_SESSION['user_role'] ?? '';
 $isStaff  = in_array($userRole, ['admin', 'agency', 'agent'], true);
-
-$ticketId = 0;
 $originalText = '';
 
 if ($itemType === 'ticket_message') {
@@ -33,27 +31,25 @@ if ($itemType === 'ticket_message') {
     $stmt->execute([$itemId]);
     $t = $stmt->fetch();
     if ($t) {
-        $ticketId = (int)$t['id'];
         $originalText = $t['message'];
         $tokenMatch = (!empty($token) && hash_equals($t['access_token'], $token));
-        $userMatch = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$t['user_id']);
+        $userMatch  = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$t['user_id']);
         if (!$isStaff && !$tokenMatch && !$userMatch) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
             exit;
         }
     }
 } else {
-    $stmt = $pdo->prepare("SELECT r.id, r.ticket_id, r.message, t.access_token, t.user_id, t.guest_email 
+    $stmt = $pdo->prepare("SELECT r.id, r.message, t.access_token, t.user_id, t.guest_email 
                            FROM ticket_replies r 
                            JOIN tickets t ON r.ticket_id = t.id 
                            WHERE r.id = ?");
     $stmt->execute([$itemId]);
     $r = $stmt->fetch();
     if ($r) {
-        $ticketId = (int)$r['ticket_id'];
         $originalText = $r['message'];
         $tokenMatch = (!empty($token) && hash_equals($r['access_token'], $token));
-        $userMatch = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$r['user_id']);
+        $userMatch  = (isset($_SESSION['user_id']) && (int)$_SESSION['user_id'] === (int)$r['user_id']);
         if (!$isStaff && !$tokenMatch && !$userMatch) {
             echo json_encode(['success' => false, 'error' => 'Unauthorized.']);
             exit;
@@ -73,64 +69,75 @@ $cached = $stmtCache->fetchColumn();
 
 if ($cached !== false) {
     echo json_encode([
-        'success' => true,
+        'success'    => true,
         'translated' => $cached,
-        'cached' => true
+        'cached'     => true
     ]);
     exit;
 }
 
-// 3. Richiesta a LibreTranslate se non in cache
-$libreUrl = rtrim(get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com'), '/');
-$apiKey   = get_setting($pdo, 'libretranslate_api_key', '');
+// 3. Normalizzazione URL LibreTranslate (come in translations.php)
+$apiUrl = get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com');
+$apiUrl = rtrim($apiUrl, '/');
+if (substr($apiUrl, -10) === '/translate') {
+    $apiUrl = substr($apiUrl, 0, -10);
+}
+$translateEndpoint = $apiUrl . '/translate';
 
-if (empty($libreUrl)) {
-    echo json_encode(['success' => false, 'error' => 'LibreTranslate URL is not configured.']);
+// Helper per interrogare LibreTranslate
+function call_libretranslate($endpoint, $text, $source, $target, $format = 'html') {
+    $postFields = [
+        'q'      => $text,
+        'source' => $source,
+        'target' => $target,
+        'format' => $format
+    ];
+
+    $ch = curl_init($endpoint);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST           => true,
+        CURLOPT_POSTFIELDS     => json_encode($postFields),
+        CURLOPT_HTTPHEADER     => ['Content-Type: application/json'],
+        CURLOPT_TIMEOUT        => 20,
+        CURLOPT_SSL_VERIFYPEER => false
+    ]);
+
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return [$httpCode, $response];
+}
+
+// Primo tentativo: 'auto'
+list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, 'auto', $targetLang, 'html');
+
+// Se LibreTranslate risponde 404 su 'auto', usiamo il fallback identico a translations.php
+if ($httpCode === 404 || $httpCode === 400) {
+    $fallbackSource = ($targetLang === 'en') ? 'it' : 'en';
+    list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, $fallbackSource, $targetLang, 'html');
+    
+    // Se html non è supportato dal server, proviamo in formato text
+    if ($httpCode === 404 || $httpCode === 400) {
+        list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, $fallbackSource, $targetLang, 'text');
+    }
+}
+
+if ($httpCode !== 200 || empty($response)) {
+    echo json_encode(['success' => false, 'error' => "Translation service error ($httpCode)."]);
     exit;
 }
 
-$payload = [
-    'q'      => $originalText,
-    'source' => 'auto',
-    'target' => $targetLang,
-    'format' => 'html'
-];
-if (!empty($apiKey)) {
-    $payload['api_key'] = $apiKey;
-}
-
-$ch = curl_init($libreUrl . '/translate');
-curl_setopt_array($ch, [
-    CURLOPT_RETURNTRANSFER => true,
-    CURLOPT_POST           => true,
-    CURLOPT_POSTFIELDS     => json_encode($payload),
-    CURLOPT_HTTPHEADER     => [
-        'Content-Type: application/json',
-        'Accept: application/json'
-    ],
-    CURLOPT_TIMEOUT        => 15,
-    CURLOPT_SSL_VERIFYPEER => false
-]);
-
-$response = curl_exec($ch);
-$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-$curlErr  = curl_error($ch);
-curl_close($ch);
-
-if ($curlErr || $httpCode !== 200) {
-    echo json_encode(['success' => false, 'error' => 'Translation service unreachable or error (' . $httpCode . ').']);
-    exit;
-}
-
-$data = json_decode($response, true);
-$translatedText = $data['translatedText'] ?? null;
+$resData = json_decode($response, true);
+$translatedText = $resData['translatedText'] ?? null;
 
 if (!$translatedText) {
-    echo json_encode(['success' => false, 'error' => $data['error'] ?? 'Empty translation received.']);
+    echo json_encode(['success' => false, 'error' => 'Empty translation received.']);
     exit;
 }
 
-// 4. Salvataggio nella Cache MySQL
+// 4. Scrittura in Cache MySQL
 $stmtInsert = $pdo->prepare("
     INSERT INTO translations_cache (item_type, item_id, source_lang, target_lang, translated_text) 
     VALUES (?, ?, 'auto', ?, ?)
@@ -139,7 +146,7 @@ $stmtInsert = $pdo->prepare("
 $stmtInsert->execute([$itemType, $itemId, $targetLang, $translatedText]);
 
 echo json_encode([
-    'success' => true,
+    'success'    => true,
     'translated' => $translatedText,
-    'cached' => false
+    'cached'     => false
 ]);
