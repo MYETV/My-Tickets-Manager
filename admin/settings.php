@@ -390,12 +390,19 @@ $msCallbackUrl      = $baseUrl . '/auth/microsoft-callback.php';
 
             <!-- LibreTranslate API Settings -->
             <div class="card mb-4 shadow-sm">
-                <div class="card-header bg-secondary text-white">LibreTranslate Automatic Translation Server</div>
+                <div class="card-header bg-secondary text-white"><i class="fa-solid fa-language me-2"></i> LibreTranslate Automatic Translation Server</div>
                 <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label">LibreTranslate Endpoint URL</label>
-                        <input type="url" name="settings[libretranslate_url]" class="form-control" value="<?php echo htmlspecialchars(get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com')); ?>">
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">LibreTranslate Endpoint URL</label>
+                            <input type="url" name="settings[libretranslate_url]" class="form-control" placeholder="http://localhost:5000 o https://libretranslate.com" value="<?php echo htmlspecialchars(get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com')); ?>">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">API Key (Optional)</label>
+                            <input type="password" name="settings[libretranslate_api_key]" class="form-control" placeholder="Leave blank if not required" value="<?php echo htmlspecialchars(get_setting($pdo, 'libretranslate_api_key', '')); ?>">
+                        </div>
                     </div>
+                    <div class="form-text text-muted">Tickets and replies can be translated on demand into the visitor's currently selected language and cached locally in MySQL.</div>
                 </div>
             </div>
 
