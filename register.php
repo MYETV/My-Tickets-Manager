@@ -31,25 +31,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $assignedRole  = ($requestedRole === 'agency') ? 'agency' : 'user';
 
     if (empty($username) || empty($email) || empty($password)) {
-        $error = "All fields are required.";
+        $error = __('all_fields_required', 'All fields are required.');
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        $error = "Please enter a valid email address.";
+        $error = __('valid_email_required', 'Please enter a valid email address.');
     } else {
         // Check if email or username is already registered
         $stmtCheck = $pdo->prepare("SELECT id FROM users WHERE email = ? OR username = ?");
         $stmtCheck->execute([$email, $username]);
         
         if ($stmtCheck->fetch()) {
-            $error = "Email or Username/Agency Name is already registered.";
+            $error = __('account_already_exists', 'Email or Username/Agency Name is already registered.');
         } else {
             $passwordHash = password_hash($password, PASSWORD_DEFAULT);
             
             // Insert user with the correct role ('agency' or 'user') and agency_id if present
             $stmtInsert = $pdo->prepare("INSERT INTO users (username, email, password_hash, role, agency_id) VALUES (?, ?, ?, ?, ?)");
             if ($stmtInsert->execute([$username, $email, $passwordHash, $assignedRole, $agencyId])) {
-                $success = "Registration completed successfully as " . strtoupper($assignedRole) . "! You can now log in.";
+                $success = __('registration_success', 'Registration completed successfully! You can now log in.');
             } else {
-                $error = "Registration failed. Please try again.";
+                $error = __('registration_failed', 'Registration failed. Please try again.');
             }
         }
     }
@@ -63,14 +63,14 @@ require_once __DIR__ . '/includes/header.php';
         <div class="card-header bg-primary text-white text-center py-3">
             <h4 class="m-0">
                 <i class="fa-solid <?php echo $assignedRole === 'agency' ? 'fa-building' : 'fa-user-plus'; ?> me-2"></i>
-                <?php echo $assignedRole === 'agency' ? 'Agency Registration' : 'Register Account'; ?>
+                <?php echo $assignedRole === 'agency' ? __('agency_registration', 'Agency Registration') : __('register_account', 'Register Account'); ?>
             </h4>
         </div>
         <div class="card-body p-4">
             <?php if ($error): ?><div class="alert alert-danger"><?php echo htmlspecialchars($error); ?></div><?php endif; ?>
             <?php if ($success): ?>
                 <div class="alert alert-success"><?php echo $success; ?></div>
-                <a href="/login.php" class="btn btn-primary w-100">Go to Login</a>
+                <a href="/login.php" class="btn btn-primary w-100"><?php echo __('go_to_login', 'Go to Login'); ?></a>
             <?php else: ?>
                 <form method="POST" action="register.php">
                     <input type="hidden" name="requested_role" value="<?php echo htmlspecialchars($assignedRole); ?>">
@@ -78,24 +78,24 @@ require_once __DIR__ . '/includes/header.php';
                     <?php if ($agencyId): ?>
                         <input type="hidden" name="agency_id" value="<?php echo $agencyId; ?>">
                         <div class="alert alert-info small py-2">
-                            <i class="fa-solid fa-building me-1"></i> Registering via official Agency invitation #<?php echo $agencyId; ?>.
+                            <i class="fa-solid fa-building me-1"></i> <?php echo __('agency_invitation_notice', 'Registering via official Agency invitation #'); ?><?php echo $agencyId; ?>.
                         </div>
                     <?php endif; ?>
 
                     <div class="mb-3">
-                        <label class="form-label"><?php echo $assignedRole === 'agency' ? 'Agency Name' : 'Username'; ?></label>
+                        <label class="form-label"><?php echo $assignedRole === 'agency' ? __('agency_name', 'Agency Name') : __('username', 'Username'); ?></label>
                         <input type="text" name="username" class="form-control" placeholder="<?php echo $assignedRole === 'agency' ? 'e.g. My Agency LLC' : 'e.g. john_doe'; ?>" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Email Address</label>
+                        <label class="form-label"><?php echo __('email_address', 'Email Address'); ?></label>
                         <input type="email" name="email" class="form-control" placeholder="your.email@domain.com" required>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Password</label>
+                        <label class="form-label"><?php echo __('password', 'Password'); ?></label>
                         <input type="password" name="password" class="form-control" required minlength="8">
                     </div>
                     <button type="submit" class="btn btn-primary w-100">
-                        <i class="fa-solid fa-check me-1"></i> <?php echo $assignedRole === 'agency' ? 'Register Agency' : 'Create Account'; ?>
+                        <i class="fa-solid fa-check me-1"></i> <?php echo $assignedRole === 'agency' ? __('register_agency', 'Register Agency') : __('create_account', 'Create Account'); ?>
                     </button>
                 </form>
             <?php endif; ?>
