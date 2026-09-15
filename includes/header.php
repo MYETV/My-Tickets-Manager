@@ -1,6 +1,6 @@
 <?php
 // includes/header.php
-// Header with Bootstrap 5.3 Theme Switcher, Branding logo, Custom Colors, language selector and Header Code Injection
+// Header with Bootstrap 5.3 Theme Switcher, Branding logo, Custom Colors, Language selector, and Header Code Injection
 require_once __DIR__ . '/config.php';
 $siteTitle = get_setting($pdo, 'site_title', 'My Tickets Manager');
 $availableLangs = get_available_languages();
@@ -153,22 +153,22 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
                 <div class="dropdown">
                     <button class="btn btn-outline-light btn-sm dropdown-toggle border-secondary" type="button" id="themeDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                         <i class="fa-solid fa-circle-half-stroke me-1" id="themeIcon"></i>
-                        <span id="themeLabel">Auto</span>
+                        <span id="themeLabel"><?php echo __('theme_auto', 'Auto'); ?></span>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="themeDropdown">
                         <li>
                             <button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="light">
-                                <i class="fa-solid fa-sun me-2 text-warning"></i> Light
+                                <i class="fa-solid fa-sun me-2 text-warning"></i> <?php echo __('theme_light', 'Light'); ?>
                             </button>
                         </li>
                         <li>
                             <button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="dark">
-                                <i class="fa-solid fa-moon me-2 text-primary"></i> Dark
+                                <i class="fa-solid fa-moon me-2 text-primary"></i> <?php echo __('theme_dark', 'Dark'); ?>
                             </button>
                         </li>
                         <li>
                             <button class="dropdown-item d-flex align-items-center" type="button" data-bs-theme-value="auto">
-                                <i class="fa-solid fa-circle-half-stroke me-2 text-secondary"></i> System Auto
+                                <i class="fa-solid fa-circle-half-stroke me-2 text-secondary"></i> <?php echo __('theme_system_auto', 'System Auto'); ?>
                             </button>
                         </li>
                     </ul>
@@ -211,17 +211,17 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
         <div class="modal-dialog modal-dialog-scrollable">
             <div class="modal-content text-start">
                 <div class="modal-header bg-dark text-white">
-                    <h5 class="modal-title"><i class="fa-solid fa-bell me-2 text-warning"></i> Notifications</h5>
+                    <h5 class="modal-title"><i class="fa-solid fa-bell me-2 text-warning"></i> <?php echo __('notifications', 'Notifications'); ?></h5>
                     <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body p-0">
                     <div id="notifListGroup" class="list-group list-group-flush">
-                        <div class="text-center text-muted py-3">Loading notifications...</div>
+                        <div class="text-center text-muted py-3"><?php echo __('loading_notifications', 'Loading notifications...'); ?></div>
                     </div>
                 </div>
                 <div class="modal-footer py-2 justify-content-between">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnMarkAllRead"><i class="fa-solid fa-check-double me-1"></i> Mark All as Read</button>
-                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnMarkAllRead"><i class="fa-solid fa-check-double me-1"></i> <?php echo __('mark_all_read', 'Mark All as Read'); ?></button>
+                    <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal"><?php echo __('close', 'Close'); ?></button>
                 </div>
             </div>
         </div>
@@ -232,6 +232,7 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
         const notifBadge = document.getElementById('notifBadge');
         const notifList = document.getElementById('notifListGroup');
         const btnMarkRead = document.getElementById('btnMarkAllRead');
+        const emptyMsg = "<?php echo addslashes(__('no_notifications', 'No notifications received yet.')); ?>";
 
         function fetchNotifications() {
             fetch('/api/notifications.php?action=get')
@@ -239,7 +240,7 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
                 .then(data => {
                     if (!data.success) return;
 
-                    // Update Badge
+                    // Update Badge count
                     if (data.unread_count > 0) {
                         notifBadge.textContent = data.unread_count;
                         notifBadge.classList.remove('d-none');
@@ -250,7 +251,7 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
                     // Render List
                     if (!notifList) return;
                     if (data.items.length === 0) {
-                        notifList.innerHTML = '<div class="text-center text-muted py-3">No notifications received yet.</div>';
+                        notifList.innerHTML = `<div class="text-center text-muted py-3">${emptyMsg}</div>`;
                         return;
                     }
 
