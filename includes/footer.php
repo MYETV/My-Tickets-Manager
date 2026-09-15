@@ -5,7 +5,7 @@
     </div> <!-- End .wrapper -->
     <footer class="bg-dark text-white text-center py-3 mt-auto">
         <div class="container">
-            <small>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(get_setting($pdo, 'site_title', 'My Tickets Manager')); ?> - Open Source Ticket Management</small>
+            <small>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(get_setting($pdo, 'site_title', 'My Tickets Manager')); ?> - <?php echo __('open_source_ticket_management', 'Open Source Ticket Management'); ?></small>
             
             <?php 
             $termsUrl = get_setting($pdo, 'terms_url', '');
@@ -48,22 +48,26 @@
                 if (theme === 'auto') {
                     const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                     document.documentElement.setAttribute('data-bs-theme', systemDark ? 'dark' : 'light');
-                    if (themeLabel) themeLabel.textContent = 'Auto';
+                    if (themeLabel) themeLabel.textContent = "<?php echo addslashes(__('theme_auto', 'Auto')); ?>";
                     if (themeIcon) themeIcon.className = 'fa-solid fa-circle-half-stroke me-1';
                 } else {
                     document.documentElement.setAttribute('data-bs-theme', theme);
-                    if (themeLabel) themeLabel.textContent = theme.charAt(0).toUpperCase() + theme.slice(1);
+                    if (themeLabel) {
+                        themeLabel.textContent = theme === 'dark' 
+                            ? "<?php echo addslashes(__('theme_dark', 'Dark')); ?>" 
+                            : "<?php echo addslashes(__('theme_light', 'Light')); ?>";
+                    }
                     if (themeIcon) {
                         themeIcon.className = theme === 'dark' ? 'fa-solid fa-moon me-1 text-primary' : 'fa-solid fa-sun me-1 text-warning';
                     }
                 }
             }
 
-            // Apply theme on load
+            // Apply preferred theme on page load
             const currentTheme = getPreferredTheme();
             setTheme(currentTheme);
 
-            // Listen for user clicks on theme options
+            // Listen for user clicks on theme dropdown options
             document.querySelectorAll('[data-bs-theme-value]').forEach(toggle => {
                 toggle.addEventListener('click', () => {
                     const theme = toggle.getAttribute('data-bs-theme-value');
@@ -72,7 +76,7 @@
                 });
             });
 
-            // System color scheme change listener
+            // Operating system color scheme change listener
             window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
                 if (getPreferredTheme() === 'auto') {
                     setTheme('auto');
@@ -87,7 +91,7 @@
             const toggleBtn = document.getElementById('sidebarToggle');
             const body = document.body;
 
-            // Load saved state from localStorage
+            // Load saved sidebar state from localStorage
             if (localStorage.getItem('sidebar-collapsed') === 'true') {
                 body.classList.add('sidebar-collapsed');
             }
@@ -105,29 +109,29 @@
         });
     </script>
 
-<!-- Automatic Background Queue Runner with Throttle -->
-<script>
-(function() {
-    const lastRun = localStorage.getItem('ai_queue_last_run');
-    const now = Date.now();
+    <!-- Automatic Background AI Queue Runner with Throttle -->
+    <script>
+    (function() {
+        const lastRun = localStorage.getItem('ai_queue_last_run');
+        const now = Date.now();
 
-    if (!lastRun || (now - lastRun) > 10000) {
-        localStorage.setItem('ai_queue_last_run', now);
-        fetch('/api/process_ai_queue.php', { 
-            method: 'GET', 
-            credentials: 'same-origin',
-            headers: { 'X-Requested-With': 'XMLHttpRequest' }
-        }).catch(function(){});
+        if (!lastRun || (now - lastRun) > 10000) {
+            localStorage.setItem('ai_queue_last_run', now);
+            fetch('/api/process_ai_queue.php', { 
+                method: 'GET', 
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            }).catch(function(){});
+        }
+    })();
+    </script>
+
+    <!-- Custom Footer Injection -->
+    <?php 
+    $footerInjection = get_setting($pdo, 'inject_footer', '');
+    if (!empty($footerInjection)) {
+        echo $footerInjection . "\n";
     }
-})();
-</script>
-
-<!-- Custom Footer Injection -->
-<?php 
-$footerInjection = get_setting($pdo, 'inject_footer', '');
-if (!empty($footerInjection)) {
-    echo $footerInjection . "\n";
-}
-?>
+    ?>
 </body>
 </html>
