@@ -122,3 +122,16 @@ CREATE TABLE IF NOT EXISTS `ticket_followers` (
   CONSTRAINT `fk_tf_ticket` FOREIGN KEY (`ticket_id`) REFERENCES `tickets` (`id`) ON DELETE CASCADE,
   CONSTRAINT `fk_tf_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+CREATE TABLE IF NOT EXISTS `translations_cache` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `item_type` enum('ticket_message', 'reply_message') NOT NULL,
+  `item_id` int unsigned NOT NULL,
+  `source_lang` varchar(10) DEFAULT 'auto',
+  `target_lang` varchar(10) NOT NULL,
+  `translated_text` mediumtext NOT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_item_lang` (`item_type`, `item_id`, `target_lang`),
+  KEY `idx_item` (`item_type`, `item_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
