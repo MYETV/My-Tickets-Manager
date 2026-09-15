@@ -1,6 +1,6 @@
 <?php
 // admin/translations.php
-// Admin Language JSON generator using LibreTranslate with Batch support and Error Handling
+// Clean Language JSON generator using LibreTranslate with automatic duplicate-word deduplication
 session_start();
 require_once __DIR__ . '/../includes/config.php';
 
@@ -13,6 +13,14 @@ if (!isset($_SESSION['user_role']) || $_SESSION['user_role'] !== 'admin') {
 $message = '';
 $error = '';
 
+/**
+ * Clean translation artifacts like duplicate words caused by MT subword tokenization
+ * (e.g. "impostazioni impostazioni" -> "impostazioni")
+ */
+function clean_translation(string $text): string {
+    return preg_replace('/\b(\p{L}+)\s+\1\b/ui', '$1', trim($text));
+}
+
 // Handle translation generation
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
     set_time_limit(180);
@@ -21,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
     $sourceFilePath = __DIR__ . '/../translations/lang-en.json';
     $targetFilePath = __DIR__ . '/../translations/lang-' . $targetLang . '.json';
 
-    // Retrieve settings and clean URL
+    // Retrieve settings and normalize endpoint URL
     $apiUrl = rtrim(get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com'), '/');
     if (substr($apiUrl, -10) === '/translate') {
         $apiUrl = substr($apiUrl, 0, -10);
@@ -42,7 +50,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
             $values = array_values($sourceData);
             $translatedData = [];
 
-            // Attempt 1: Fast Batch Translation (LibreTranslate natively accepts an array of strings in 'q')
+            // Fast batch translation request
             $batchPayload = [
                 'q'      => $values,
                 'source' => 'en',
@@ -65,19 +73,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
 
             $response = curl_exec($ch);
             $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-            $curlError= curl_error($ch);
             curl_close($ch);
 
             $batchSuccess = false;
             if ($httpCode === 200 && $response) {
                 $res = json_decode($response, true);
                 if (isset($res['translatedText']) && is_array($res['translatedText']) && count($res['translatedText']) === count($keys)) {
-                    $translatedData = array_combine($keys, $res['translatedText']);
+                    $cleanedValues = array_map('clean_translation', $res['translatedText']);
+                    $translatedData = array_combine($keys, $cleanedValues);
                     $batchSuccess = true;
                 }
             }
 
-            // Attempt 2: Fallback to sequential item translation if server does not support batch arrays
+            // Sequential fallback if batch array is not supported
             if (!$batchSuccess) {
                 $failedCount = 0;
                 $lastErrorMsg = '';
@@ -109,7 +117,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
 
                     if ($itemHttpCode === 200 && $itemResponse) {
                         $res = json_decode($itemResponse, true);
-                        $translatedData[$key] = $res['translatedText'] ?? $value;
+                        $itemResult = $res['translatedText'] ?? $value;
+                        $translatedData[$key] = clean_translation($itemResult);
                     } else {
                         $res = json_decode($itemResponse, true);
                         $lastErrorMsg = $res['error'] ?? "HTTP Status $itemHttpCode";
@@ -118,18 +127,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['target_lang'])) {
                     }
                 }
 
-                // If all translations failed, notify the administrator
                 if ($failedCount === count($keys)) {
-                    $error = "Translation server returned an error (" . ($lastErrorMsg ?: "HTTP $httpCode") . "). Please verify your LibreTranslate URL and API Key in Settings.";
+                    $error = "Translation server returned an error (" . ($lastErrorMsg ?: "HTTP $httpCode") . "). Please check your LibreTranslate configuration.";
                 }
             }
 
-            // Save file to translations directory if successful
+            // Save translated JSON file
             if (empty($error)) {
                 if (file_put_contents($targetFilePath, json_encode($translatedData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE))) {
                     $message = "Translation file (lang-{$targetLang}.json) generated successfully!";
                 } else {
-                    $error = "Failed to write translation file to disk. Check directory permissions.";
+                    $error = "Failed to write translation file to disk.";
                 }
             }
         }
@@ -144,7 +152,7 @@ require_once __DIR__ . '/../includes/sidebar.php';
 
 <main class="main-content">
     <div class="container-fluid" style="max-width: 800px;">
-        <h2>Language & i18n Generator</h2>
+        <h2><i class="fa-solid fa-language me-2"></i> Language & i18n Generator</h2>
         <hr>
 
         <?php if ($message): ?><div class="alert alert-success"><?php echo htmlspecialchars($message); ?></div><?php endif; ?>
