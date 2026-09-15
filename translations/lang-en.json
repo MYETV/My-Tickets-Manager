@@ -1,6 +1,10 @@
 {
   "site_title": "My Tickets Manager",
   "home": "Home",
+  "support_center": "Support Center",
+  "homepage_welcome_text": "Welcome to our ticketing support platform. You can submit a new ticket or check the status of an existing request.",
+  "submit_new_ticket": "Submit New Ticket",
+  "check_ticket_status": "Check Ticket Status",
   "submit_ticket": "Submit Ticket",
   "submit_a_ticket": "Submit a Ticket",
   "track_ticket": "Track Ticket",
@@ -131,5 +135,17 @@
   "translate": "Translate",
   "translating": "Translating...",
   "generate_ai_suggestion": "Generate AI Suggestion",
-  "ticket_closed_notice": "This ticket is closed. You cannot post further replies."
+  "ticket_closed_notice": "This ticket is closed. You cannot post further replies.",
+  "theme_auto": "Auto",
+  "theme_light": "Light",
+  "theme_dark": "Dark",
+  "theme_system_auto": "System Auto",
+  "notifications": "Notifications",
+  "loading_notifications": "Loading notifications...",
+  "no_notifications": "No notifications received yet.",
+  "mark_all_read": "Mark All as Read",
+  "close": "Close",
+  "open_source_ticket_management": "Open Source Ticket Management",
+  "terms_of_service": "Terms of Service",
+  "privacy_policy": "Privacy Policy"
 }
