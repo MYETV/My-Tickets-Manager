@@ -1,5 +1,6 @@
 <?php
 // api/translate.php
+// Translation API Endpoint powered by LibreTranslate with local MySQL caching layer
 session_start();
 header('Content-Type: application/json; charset=utf-8');
 
@@ -21,7 +22,7 @@ if (!$itemId || !in_array($itemType, ['ticket_message', 'reply_message'], true) 
     exit;
 }
 
-// 1. Controllo Permessi / Accesso al Ticket
+// 1. Check ticket access permissions
 $userRole = $_SESSION['user_role'] ?? '';
 $isStaff  = in_array($userRole, ['admin', 'agency', 'agent'], true);
 $originalText = '';
@@ -62,7 +63,7 @@ if (empty($originalText)) {
     exit;
 }
 
-// 2. Controllo Cache MySQL
+// 2. Query MySQL translations cache
 $stmtCache = $pdo->prepare("SELECT translated_text FROM translations_cache WHERE item_type = ? AND item_id = ? AND target_lang = ?");
 $stmtCache->execute([$itemType, $itemId, $targetLang]);
 $cached = $stmtCache->fetchColumn();
@@ -76,7 +77,7 @@ if ($cached !== false) {
     exit;
 }
 
-// 3. Normalizzazione URL LibreTranslate (come in translations.php)
+// 3. Normalize LibreTranslate endpoint URL
 $apiUrl = get_setting($pdo, 'libretranslate_url', 'https://libretranslate.com');
 $apiUrl = rtrim($apiUrl, '/');
 if (substr($apiUrl, -10) === '/translate') {
@@ -84,7 +85,7 @@ if (substr($apiUrl, -10) === '/translate') {
 }
 $translateEndpoint = $apiUrl . '/translate';
 
-// Helper per interrogare LibreTranslate
+// Helper to execute LibreTranslate cURL call
 function call_libretranslate($endpoint, $text, $source, $target, $format = 'html') {
     $postFields = [
         'q'      => $text,
@@ -110,15 +111,15 @@ function call_libretranslate($endpoint, $text, $source, $target, $format = 'html
     return [$httpCode, $response];
 }
 
-// Primo tentativo: 'auto'
+// Attempt 1: detect source language automatically
 list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, 'auto', $targetLang, 'html');
 
-// Se LibreTranslate risponde 404 su 'auto', usiamo il fallback identico a translations.php
+// Attempt 2: fallback if LibreTranslate instance lacks 'auto' model or HTML parsing
 if ($httpCode === 404 || $httpCode === 400) {
     $fallbackSource = ($targetLang === 'en') ? 'it' : 'en';
     list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, $fallbackSource, $targetLang, 'html');
     
-    // Se html non è supportato dal server, proviamo in formato text
+    // Attempt 3: fallback to plaintext format if HTML format is not supported
     if ($httpCode === 404 || $httpCode === 400) {
         list($httpCode, $response) = call_libretranslate($translateEndpoint, $originalText, $fallbackSource, $targetLang, 'text');
     }
@@ -137,7 +138,7 @@ if (!$translatedText) {
     exit;
 }
 
-// 4. Scrittura in Cache MySQL
+// 4. Save translated text to MySQL cache
 $stmtInsert = $pdo->prepare("
     INSERT INTO translations_cache (item_type, item_id, source_lang, target_lang, translated_text) 
     VALUES (?, ?, 'auto', ?, ?)
