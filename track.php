@@ -85,12 +85,12 @@ if (!empty($code)) {
         if ($stmtCheckFollow->fetch()) {
             $stmtUnfollow = $pdo->prepare("DELETE FROM ticket_followers WHERE ticket_id = ? AND user_id = ?");
             $stmtUnfollow->execute([$ticket['id'], $staffUserId]);
-            $success = "You have stopped following this ticket.";
+            $success = __('stopped_following_ticket', 'You have stopped following this ticket.');
             $isFollowing = false;
         } else {
             $stmtFollow = $pdo->prepare("INSERT INTO ticket_followers (ticket_id, user_id) VALUES (?, ?)");
             $stmtFollow->execute([$ticket['id'], $staffUserId]);
-            $success = "You are now following this ticket. You will receive internal notifications for all updates.";
+            $success = __('started_following_ticket', 'You are now following this ticket. You will receive internal notifications for all updates.');
             $isFollowing = true;
         }
     }
@@ -138,7 +138,7 @@ if (!empty($code)) {
             $turnstileToken = $_POST['cf-turnstile-response'] ?? '';
             
             if (!verify_turnstile($pdo, $turnstileToken)) {
-                $error = __('captcha_failed', 'Captcha verification failed.');
+                $error = __('captcha_failed', 'Captcha verification failed. Please try again.');
             } else {
                 $replyMessage = trim($_POST['reply_message'] ?? '');
 
@@ -203,35 +203,37 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
         <?php if ($canSearchWithoutEmail): ?>
             <?php 
                 $roleLabel = match($userRole) {
-                    'admin'  => 'Admin',
-                    'agency' => 'Agency Manager',
-                    'agent'  => 'Agent',
-                    default  => 'Staff Member'
+                    'admin'  => __('role_admin', 'Admin'),
+                    'agency' => __('role_agency_manager', 'Agency Manager'),
+                    'agent'  => __('role_agent', 'Agent'),
+                    default  => __('role_staff_member', 'Staff Member')
                 };
             ?>
             <div class="alert alert-info py-2 small mb-3">
-                <i class="fa-solid fa-circle-info me-1"></i> You are logged in as an <strong><?php echo $roleLabel; ?></strong>, so you can search tickets using only the Tracking Code.
+                <i class="fa-solid fa-circle-info me-1"></i> 
+                <?php printf(__('staff_search_notice', 'You are logged in as an <strong>%s</strong>, so you can search tickets using only the Tracking Code.'), $roleLabel); ?>
             </div>
         <?php elseif ($userRole === 'agent'): ?>
             <div class="alert alert-warning py-2 small mb-3">
-                <i class="fa-solid fa-triangle-exclamation me-1"></i> As an independent <strong>Agent</strong> (no agency assigned), you must enter both the Tracking Code and the associated Email address to search for tickets.
+                <i class="fa-solid fa-triangle-exclamation me-1"></i> 
+                <?php echo __('agent_independent_search_notice', 'As an independent <strong>Agent</strong> (no agency assigned), you must enter both the Tracking Code and the associated Email address to search for tickets.'); ?>
             </div>
         <?php endif; ?>
 
         <form method="GET" action="track.php" class="row g-3 mb-4">
             <?php if ($canSearchWithoutEmail): ?>
                 <div class="col-md-8">
-                    <input type="text" name="code" class="form-control" placeholder="Enter Tracking Code (e.g. ABC-123-XYZ)" value="<?php echo htmlspecialchars($code); ?>" required>
+                    <input type="text" name="code" class="form-control" placeholder="<?php echo htmlspecialchars(__('enter_tracking_code_placeholder', 'Enter Tracking Code (e.g. ABC-123-XYZ)')); ?>" value="<?php echo htmlspecialchars($code); ?>" required>
                 </div>
                 <div class="col-md-4">
                     <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-magnifying-glass me-1"></i> <?php echo __('search', 'Search Ticket'); ?></button>
                 </div>
             <?php else: ?>
                 <div class="col-md-5">
-                    <input type="text" name="code" class="form-control" placeholder="Tracking Code (e.g. ABC-123-XYZ)" value="<?php echo htmlspecialchars($code); ?>" required>
+                    <input type="text" name="code" class="form-control" placeholder="<?php echo htmlspecialchars(__('tracking_code_placeholder', 'Tracking Code (e.g. ABC-123-XYZ)')); ?>" value="<?php echo htmlspecialchars($code); ?>" required>
                 </div>
                 <div class="col-md-4">
-                    <input type="email" name="email" class="form-control" placeholder="Ticket Email" value="<?php echo htmlspecialchars($searchEmail); ?>" required>
+                    <input type="email" name="email" class="form-control" placeholder="<?php echo htmlspecialchars(__('ticket_email_placeholder', 'Ticket Email')); ?>" value="<?php echo htmlspecialchars($searchEmail); ?>" required>
                 </div>
                 <div class="col-md-3">
                     <button type="submit" class="btn btn-primary w-100"><i class="fa-solid fa-magnifying-glass me-1"></i> <?php echo __('search', 'Search'); ?></button>
@@ -257,11 +259,11 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                     <div class="content-translated alert alert-light border p-3 mb-3 d-none">
                         <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                             <small class="text-primary fw-bold">
-                                <i class="fa-solid fa-language me-1"></i> Translated content (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
+                                <i class="fa-solid fa-language me-1"></i> <?php echo __('translated_content', 'Translated content'); ?> (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
                                 <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
                             </small>
                             <button type="button" class="btn btn-sm btn-outline-secondary btn-restore-orig">
-                                <i class="fa-solid fa-rotate-left me-1"></i> Show Original
+                                <i class="fa-solid fa-rotate-left me-1"></i> <?php echo __('show_original', 'Show Original'); ?>
                             </button>
                         </div>
                         <div class="translated-text"></div>
@@ -270,13 +272,13 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                     <!-- Ticket Footer with Translate Action -->
                     <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 pt-2 border-top">
                         <div class="d-flex align-items-center gap-3">
-                            <small class="text-muted">Submitted on: <?php echo $ticket['created_at']; ?> | Category: <strong><?php echo htmlspecialchars($ticket['category_name'] ?? 'General'); ?></strong></small>
+                            <small class="text-muted"><?php echo __('submitted_on', 'Submitted on:'); ?> <?php echo $ticket['created_at']; ?> | <?php echo __('category_label', 'Category:'); ?> <strong><?php echo htmlspecialchars($ticket['category_name'] ?? __('general', 'General')); ?></strong></small>
                             
                             <!-- Main Ticket Translate Toggle Button -->
                             <button type="button" class="btn btn-sm btn-outline-primary btn-translate-toggle" 
                                     data-item-type="ticket_message" 
                                     data-item-id="<?php echo $ticket['id']; ?>">
-                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
+                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text"><?php echo __('translate', 'Translate'); ?> (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
                             </button>
                         </div>
 
@@ -286,19 +288,19 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                                     <input type="hidden" name="toggle_follow" value="1">
                                     <button type="submit" class="btn btn-sm <?php echo $isFollowing ? 'btn-warning' : 'btn-outline-warning'; ?>">
                                         <i class="fa-solid <?php echo $isFollowing ? 'fa-star' : 'fa-star-half-stroke'; ?> me-1"></i>
-                                        <?php echo $isFollowing ? 'Following Ticket' : 'Follow Ticket'; ?>
+                                        <?php echo $isFollowing ? __('following_ticket', 'Following Ticket') : __('follow_ticket', 'Follow Ticket'); ?>
                                     </button>
                                 </form>
 
                                 <form method="POST" action="track.php?code=<?php echo urlencode($code); ?>&token=<?php echo urlencode($token); ?>&email=<?php echo urlencode($searchEmail); ?>" class="d-flex align-items-center gap-2">
                                     <input type="hidden" name="update_status" value="1">
                                     <select name="status" class="form-select form-select-sm" style="width: auto;">
-                                        <option value="open" <?php echo $ticket['status'] === 'open' ? 'selected' : ''; ?>>Open</option>
-                                        <option value="answered" <?php echo $ticket['status'] === 'answered' ? 'selected' : ''; ?>>Answered</option>
-                                        <option value="customer_reply" <?php echo $ticket['status'] === 'customer_reply' ? 'selected' : ''; ?>>Customer Reply</option>
-                                        <option value="closed" <?php echo $ticket['status'] === 'closed' ? 'selected' : ''; ?>>Closed</option>
+                                        <option value="open" <?php echo $ticket['status'] === 'open' ? 'selected' : ''; ?>><?php echo __('status_open', 'Open'); ?></option>
+                                        <option value="answered" <?php echo $ticket['status'] === 'answered' ? 'selected' : ''; ?>><?php echo __('status_answered', 'Answered'); ?></option>
+                                        <option value="customer_reply" <?php echo $ticket['status'] === 'customer_reply' ? 'selected' : ''; ?>><?php echo __('status_customer_reply', 'Customer Reply'); ?></option>
+                                        <option value="closed" <?php echo $ticket['status'] === 'closed' ? 'selected' : ''; ?>><?php echo __('status_closed', 'Closed'); ?></option>
                                     </select>
-                                    <button type="submit" class="btn btn-sm btn-outline-secondary">Update Status</button>
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary"><?php echo __('update_status', 'Update Status'); ?></button>
                                 </form>
                             <?php endif; ?>
                         </div>
@@ -314,9 +316,9 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                         <strong>
                             <?php if ($reply['username']): ?>
                                 <?php echo htmlspecialchars($reply['username']); ?> 
-                                <span class="badge bg-secondary ms-1"><?php echo strtoupper($reply['role'] ?? 'Staff'); ?></span>
+                                <span class="badge bg-secondary ms-1"><?php echo strtoupper($reply['role'] ?? __('staff', 'Staff')); ?></span>
                             <?php else: ?>
-                                <?php echo htmlspecialchars($ticket['guest_name'] ?: 'Customer'); ?>
+                                <?php echo htmlspecialchars($ticket['guest_name'] ?: __('customer', 'Customer')); ?>
                             <?php endif; ?>
                         </strong>
                         <small class="text-muted"><?php echo $reply['created_at']; ?></small>
@@ -329,11 +331,11 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                         <div class="content-translated alert alert-light border p-3 mb-2 d-none">
                             <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                                 <small class="text-primary fw-bold">
-                                    <i class="fa-solid fa-language me-1"></i> Translated (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
+                                    <i class="fa-solid fa-language me-1"></i> <?php echo __('translated_content', 'Translated content'); ?> (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>) 
                                     <span class="badge bg-secondary font-monospace cache-badge ms-1" style="font-size:0.7em;"></span>
                                 </small>
                                 <button type="button" class="btn btn-sm btn-outline-secondary btn-restore-orig">
-                                    <i class="fa-solid fa-rotate-left me-1"></i> Show Original
+                                    <i class="fa-solid fa-rotate-left me-1"></i> <?php echo __('show_original', 'Show Original'); ?>
                                 </button>
                             </div>
                             <div class="translated-text"></div>
@@ -344,7 +346,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                             <button type="button" class="btn btn-sm btn-outline-primary btn-translate-toggle" 
                                     data-item-type="reply_message" 
                                     data-item-id="<?php echo $reply['id']; ?>">
-                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
+                                <i class="fa-solid fa-language me-1"></i> <span class="btn-text"><?php echo __('translate', 'Translate'); ?> (<span class="target-lang-label"><?php echo strtoupper($activeLang); ?></span>)</span>
                             </button>
                         </div>
                     </div>
@@ -353,7 +355,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
 
             <?php if ($ticket['status'] !== 'closed'): ?>
                 <div class="card shadow-sm mt-4">
-                    <div class="card-header bg-secondary text-white">Post a Reply</div>
+                    <div class="card-header bg-secondary text-white"><?php echo __('post_a_reply', 'Post a Reply'); ?></div>
                     <div class="card-body">
                         <form id="reply_form" method="POST" action="track.php?code=<?php echo urlencode($code); ?>&token=<?php echo urlencode($token); ?>&email=<?php echo urlencode($searchEmail); ?>">
                             <input type="hidden" name="submit_reply" value="1">
@@ -364,14 +366,14 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                             <?php if ($isStaff && get_setting($pdo, 'ai_enabled', '0') === '1'): ?>
                                 <div class="mb-3">
                                     <button type="button" id="btn_generate_ai" class="btn btn-sm btn-outline-dark">
-                                        <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> Generate AI Suggestion
+                                        <i class="fa-solid fa-wand-magic-sparkles text-primary me-1"></i> <?php echo __('generate_ai_suggestion', 'Generate AI Suggestion'); ?>
                                     </button>
                                     <span id="ai_spinner" class="spinner-border spinner-border-sm text-primary d-none ms-2" role="status"></span>
                                 </div>
                             <?php endif; ?>
 
                             <div class="mb-3">
-                                <label class="form-label">Your Message</label>
+                                <label class="form-label"><?php echo __('your_message', 'Your Message'); ?></label>
                                 <textarea id="reply_message" name="reply_message" class="form-control" rows="5"></textarea>
                             </div>
 
@@ -381,12 +383,12 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                                 </div>
                             <?php endif; ?>
 
-                            <button type="submit" class="btn btn-success"><i class="fa-solid fa-reply me-1"></i> Send Reply</button>
+                            <button type="submit" class="btn btn-success"><i class="fa-solid fa-reply me-1"></i> <?php echo __('send_reply', 'Send Reply'); ?></button>
                         </form>
                     </div>
                 </div>
             <?php else: ?>
-                <div class="alert alert-warning mt-4">This ticket is closed. You cannot post further replies.</div>
+                <div class="alert alert-warning mt-4"><?php echo __('ticket_closed_notice', 'This ticket is closed. You cannot post further replies.'); ?></div>
             <?php endif; ?>
         <?php endif; ?>
     </div>
@@ -449,6 +451,11 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
         const ticketCode  = '<?php echo htmlspecialchars($ticket['tracking_code'] ?? ''); ?>';
         const ticketToken = '<?php echo htmlspecialchars($ticket['access_token'] ?? ''); ?>';
 
+        // Localized string variables for JavaScript toggle buttons
+        const labelTranslate    = "<?php echo addslashes(__('translate', 'Translate')); ?>";
+        const labelShowOriginal = "<?php echo addslashes(__('show_original', 'Show Original')); ?>";
+        const labelTranslating  = "<?php echo addslashes(__('translating', 'Translating...')); ?>";
+
         // Helper: restore original message display
         function restoreOriginal(card) {
             const origBox     = card.querySelector('.content-original');
@@ -462,7 +469,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             if (toggleBtn) {
                 toggleBtn.setAttribute('data-state', 'original');
                 toggleBtn.className = 'btn btn-sm btn-outline-primary btn-translate-toggle';
-                toggleBtn.innerHTML = `<i class="fa-solid fa-language me-1"></i> <span class="btn-text">Translate (${targetLang})</span>`;
+                toggleBtn.innerHTML = `<i class="fa-solid fa-language me-1"></i> <span class="btn-text">${labelTranslate} (${targetLang})</span>`;
             }
         }
 
@@ -478,7 +485,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
             if (toggleBtn) {
                 toggleBtn.setAttribute('data-state', 'translated');
                 toggleBtn.className = 'btn btn-sm btn-outline-warning btn-translate-toggle';
-                toggleBtn.innerHTML = `<i class="fa-solid fa-rotate-left me-1"></i> <span class="btn-text">Show Original</span>`;
+                toggleBtn.innerHTML = `<i class="fa-solid fa-rotate-left me-1"></i> <span class="btn-text">${labelShowOriginal}</span>`;
             }
         }
 
@@ -511,7 +518,7 @@ $activeLang = $currentLang ?? $_SESSION['lang'] ?? $_COOKIE['site_lang'] ?? $_CO
                 const origBtnHtml = this.innerHTML;
 
                 this.disabled  = true;
-                this.innerHTML = '<span class="spinner-border spinner-border-sm" role="status"></span> Translating...';
+                this.innerHTML = `<span class="spinner-border spinner-border-sm" role="status"></span> ${labelTranslating}`;
 
                 const formData = new FormData();
                 formData.append('item_type', itemType);
