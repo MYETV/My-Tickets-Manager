@@ -1,6 +1,6 @@
 <?php
 // includes/ai_helper.php
-// AI Integration Engine for Google Gemini API and Ollama Local Models with Extended RAG Knowledge Augmentation
+// AI Integration Engine for Google Gemini API, Ollama Local Models, and OpenAI-Compatible Chat APIs (MLX-LM) with RAG Knowledge Augmentation
 
 require_once __DIR__ . '/config.php';
 require_once __DIR__ . '/rag_helper.php';
@@ -68,6 +68,8 @@ function generate_ai_ticket_reply(PDO $pdo, string $ticketSubject, string $ticke
         return call_gemini_api($pdo, $fullPrompt);
     } elseif ($provider === 'ollama') {
         return call_ollama_api($pdo, $fullPrompt);
+    } elseif ($provider === 'openai-chat') {
+        return call_openai_chat_api($pdo, $fullPrompt);
     }
 
     return false;
@@ -162,6 +164,68 @@ function call_ollama_api(PDO $pdo, string $prompt) {
 
     $data = json_decode($response, true);
     $generatedText = $data['response'] ?? false;
+
+    if ($generatedText) {
+        $generatedText = preg_replace('/^```html\s*/i', '', $generatedText);
+        $generatedText = preg_replace('/^```\s*/i', '', $generatedText);
+        $generatedText = preg_replace('/\s*```$/i', '', $generatedText);
+    }
+
+    return $generatedText;
+}
+
+/**
+ * Call OpenAI-Compatible Chat Completions API (MLX-LM, LocalAI, vLLM, OpenAI)
+ */
+function call_openai_chat_api(PDO $pdo, string $prompt) {
+    $endpointUrl = trim(get_setting($pdo, 'ai_openai_url', 'http://192.168.10.48:11435/v1/chat/completions'));
+    $model       = get_setting($pdo, 'ai_openai_model', 'mlx-community/gemma-4-e4b-it-4bit');
+    $apiKey      = trim(get_setting($pdo, 'ai_openai_api_key', ''));
+    $maxTokens   = (int)get_setting($pdo, 'ai_openai_max_tokens', '2048');
+    $temperature = (float)get_setting($pdo, 'ai_openai_temperature', '0.7');
+    $topP        = (float)get_setting($pdo, 'ai_openai_top_p', '0.9');
+
+    if (empty($endpointUrl)) {
+        error_log("OpenAI-Chat API Error: Missing endpoint URL.");
+        return false;
+    }
+
+    $payload = json_encode([
+        "model"       => $model,
+        "messages"    => [
+            [
+                "role"    => "user",
+                "content" => $prompt
+            ]
+        ],
+        "stream"      => false,
+        "temperature" => $temperature,
+        "max_tokens"  => $maxTokens,
+        "top_p"       => $topP
+    ]);
+
+    $headers = ['Content-Type: application/json'];
+    if (!empty($apiKey)) {
+        $headers[] = 'Authorization: Bearer ' . $apiKey;
+    }
+
+    $ch = curl_init($endpointUrl);
+    curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, $payload);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 120);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    if (!$response || $httpCode !== 200) {
+        error_log("OpenAI-Chat API Error: HTTP $httpCode response: " . substr((string)$response, 0, 300));
+        return false;
+    }
+
+    $data = json_decode($response, true);
+    $generatedText = $data['choices'][0]['message']['content'] ?? false;
 
     if ($generatedText) {
         $generatedText = preg_replace('/^```html\s*/i', '', $generatedText);
