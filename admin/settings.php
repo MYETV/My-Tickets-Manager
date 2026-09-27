@@ -287,38 +287,38 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                         </div>
                     </div>
 
-                    <!-- Gemini Settings -->
-                    <div class="border p-3 mb-3 bg-light rounded">
+                    <!-- Gemini Settings Block -->
+                    <div class="border p-3 mb-3 bg-light rounded" id="geminiSettingsBlock">
                         <h6 class="fw-bold"><i class="fa-brands fa-google me-1"></i> Google Gemini Settings</h6>
                         <div class="row">
                             <div class="col-md-8 mb-2">
                                 <label class="form-label">Gemini API Key</label>
-                                <input type="password" name="settings[ai_gemini_api_key]" class="form-control" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_gemini_api_key')); ?>">
+                                <input type="password" name="settings[ai_gemini_api_key]" class="form-control" placeholder="AIzaSy..." value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_gemini_api_key')); ?>">
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label class="form-label">Gemini Model</label>
-                                <input type="text" name="settings[ai_gemini_model]" class="form-control" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_gemini_model', 'gemini-1.5-flash')); ?>">
+                                <input type="text" name="settings[ai_gemini_model]" class="form-control" placeholder="gemini-1.5-flash" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_gemini_model', 'gemini-1.5-flash')); ?>">
                             </div>
                         </div>
                     </div>
 
-                    <!-- OpenAI-Compatible Chat Settings (MLX-LM, LocalAI, vLLM) -->
-                    <div class="border p-3 mb-3 bg-light rounded">
+                    <!-- OpenAI-Compatible Chat Settings Block (MLX-LM, LocalAI, vLLM, OpenAI) -->
+                    <div class="border p-3 mb-3 bg-light rounded" id="openaiSettingsBlock">
                         <h6 class="fw-bold"><i class="fa-solid fa-microchip me-1"></i> OpenAI-Compatible Chat Settings (MLX-LM / LocalAI / vLLM / OpenAI)</h6>
                         <div class="row mb-3">
                             <div class="col-md-8 mb-2">
                                 <label class="form-label">Chat Completions Endpoint URL</label>
-                                <input type="text" name="settings[ai_openai_url]" class="form-control" placeholder="http://192.168.10.48:11435/v1/chat/completions" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_url', 'http://192.168.10.48:11435/v1/chat/completions')); ?>">
+                                <input type="text" name="settings[ai_openai_url]" class="form-control" placeholder="http://localhost:11435/v1/chat/completions" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_url', '')); ?>">
                             </div>
                             <div class="col-md-4 mb-2">
                                 <label class="form-label">Model Name</label>
-                                <input type="text" name="settings[ai_openai_model]" class="form-control" placeholder="mlx-community/gemma-4-e4b-it-4bit" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_model', 'mlx-community/gemma-4-e4b-it-4bit')); ?>">
+                                <input type="text" name="settings[ai_openai_model]" class="form-control" placeholder="e.g. gpt-4o, llama-3, gemma-2" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_model', '')); ?>">
                             </div>
                         </div>
                         <div class="row mb-3">
                             <div class="col-md-12 mb-2">
                                 <label class="form-label">API Key / Bearer Token (Optional for local inference engines like MLX-LM)</label>
-                                <input type="password" name="settings[ai_openai_api_key]" class="form-control" placeholder="Leave empty if not required" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_api_key', '')); ?>">
+                                <input type="password" name="settings[ai_openai_api_key]" class="form-control" placeholder="Leave blank if authentication is not required" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_api_key', '')); ?>">
                             </div>
                         </div>
                         <div class="row">
@@ -337,8 +337,8 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                         </div>
                     </div>
 
-                    <!-- Ollama Settings & Security Parameters -->
-                    <div class="border p-3 mb-3 bg-light rounded">
+                    <!-- Ollama Settings Block -->
+                    <div class="border p-3 mb-3 bg-light rounded" id="ollamaSettingsBlock">
                         <h6 class="fw-bold"><i class="fa-solid fa-server me-1"></i> Ollama Local Settings & Advanced Parameters</h6>
                         <div class="row mb-3">
                             <div class="col-md-8 mb-2">
@@ -622,6 +622,26 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
         copyText.setSelectionRange(0, 99999);
         navigator.clipboard.writeText(copyText.value);
     }
+
+    // Dynamic visibility toggle for AI provider settings blocks
+    function updateAIProviderVisibility() {
+        const provider = document.getElementById('aiProviderSelect').value;
+        const geminiBlock = document.getElementById('geminiSettingsBlock');
+        const openaiBlock = document.getElementById('openaiSettingsBlock');
+        const ollamaBlock = document.getElementById('ollamaSettingsBlock');
+
+        geminiBlock.style.display = (provider === 'gemini') ? 'block' : 'none';
+        openaiBlock.style.display = (provider === 'openai-chat') ? 'block' : 'none';
+        ollamaBlock.style.display = (provider === 'ollama') ? 'block' : 'none';
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const providerSelect = document.getElementById('aiProviderSelect');
+        if (providerSelect) {
+            providerSelect.addEventListener('change', updateAIProviderVisibility);
+            updateAIProviderVisibility();
+        }
+    });
 </script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
