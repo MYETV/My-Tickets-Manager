@@ -274,9 +274,10 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                         <div class="col-md-6">
                             <label class="form-label">AI Provider</label>
                             <?php $aiProvider = get_setting($pdo, 'ai_provider', 'gemini'); ?>
-                            <select name="settings[ai_provider]" class="form-select">
+                            <select name="settings[ai_provider]" class="form-select" id="aiProviderSelect">
                                 <option value="gemini" <?php echo $aiProvider === 'gemini' ? 'selected' : ''; ?>>Google Gemini API (Cloud)</option>
                                 <option value="ollama" <?php echo $aiProvider === 'ollama' ? 'selected' : ''; ?>>Ollama (Local Open-Weight Models)</option>
+                                <option value="openai-chat" <?php echo $aiProvider === 'openai-chat' ? 'selected' : ''; ?>>OpenAI-Compatible Chat (MLX-LM, LocalAI, vLLM, OpenAI)</option>
                             </select>
                         </div>
                         <div class="col-md-6 form-check mt-4 ms-2">
@@ -297,6 +298,41 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                             <div class="col-md-4 mb-2">
                                 <label class="form-label">Gemini Model</label>
                                 <input type="text" name="settings[ai_gemini_model]" class="form-control" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_gemini_model', 'gemini-1.5-flash')); ?>">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- OpenAI-Compatible Chat Settings (MLX-LM, LocalAI, vLLM) -->
+                    <div class="border p-3 mb-3 bg-light rounded">
+                        <h6 class="fw-bold"><i class="fa-solid fa-microchip me-1"></i> OpenAI-Compatible Chat Settings (MLX-LM / LocalAI / vLLM / OpenAI)</h6>
+                        <div class="row mb-3">
+                            <div class="col-md-8 mb-2">
+                                <label class="form-label">Chat Completions Endpoint URL</label>
+                                <input type="text" name="settings[ai_openai_url]" class="form-control" placeholder="http://192.168.10.48:11435/v1/chat/completions" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_url', 'http://192.168.10.48:11435/v1/chat/completions')); ?>">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Model Name</label>
+                                <input type="text" name="settings[ai_openai_model]" class="form-control" placeholder="mlx-community/gemma-4-e4b-it-4bit" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_model', 'mlx-community/gemma-4-e4b-it-4bit')); ?>">
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-12 mb-2">
+                                <label class="form-label">API Key / Bearer Token (Optional for local inference engines like MLX-LM)</label>
+                                <input type="password" name="settings[ai_openai_api_key]" class="form-control" placeholder="Leave empty if not required" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_api_key', '')); ?>">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Max Tokens</label>
+                                <input type="number" name="settings[ai_openai_max_tokens]" class="form-control" placeholder="2048" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_max_tokens', '2048')); ?>">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Temperature</label>
+                                <input type="text" name="settings[ai_openai_temperature]" class="form-control" placeholder="0.7" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_temperature', '0.7')); ?>">
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">Top P</label>
+                                <input type="text" name="settings[ai_openai_top_p]" class="form-control" placeholder="0.9" value="<?php echo htmlspecialchars(get_setting($pdo, 'ai_openai_top_p', '0.9')); ?>">
                             </div>
                         </div>
                     </div>
