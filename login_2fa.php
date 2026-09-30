@@ -1,7 +1,8 @@
 <?php
-// login_2fa.php
+// /var/www/support.myetv.tv/login_2fa.php
 // 2FA Verification Page during Login Flow
 require_once __DIR__ . '/includes/config.php';
+require_once __DIR__ . '/includes/remember_me.php';
 require_once __DIR__ . '/includes/totp_helper.php';
 
 if (!isset($_SESSION['2fa_pending_user'])) {
