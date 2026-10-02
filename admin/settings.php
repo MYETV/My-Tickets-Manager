@@ -1,6 +1,6 @@
 <?php
 // admin/settings.php
-// Admin configuration settings page with OAuth providers, AI, RAG Knowledge, Theme Branding Customization, Legal links, and Code Injection
+// Admin configuration settings page with OAuth providers, AI, RAG Knowledge, Theme Branding Customization, Legal links, AdSense/Advertising, and Code Injection
 session_start();
 require_once __DIR__ . '/../includes/config.php';
 require_once __DIR__ . '/../includes/rag_helper.php';
@@ -20,8 +20,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action_sync_rag'])) {
 } elseif ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['settings'])) {
     foreach ($_POST['settings'] as $key => $value) {
         $stmt = $pdo->prepare("INSERT INTO settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
-        // We do not trim HTML code injections to preserve formatting
-        if ($key === 'inject_header' || $key === 'inject_footer') {
+        // We do not trim HTML code injections and ad snippets to preserve formatting
+        if ($key === 'inject_header' || $key === 'inject_footer' || $key === 'ads_header_code' || $key === 'ads_footer_code') {
             $stmt->execute([$key, $value]);
         } else {
             $stmt->execute([$key, trim($value)]);
@@ -100,6 +100,48 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                 </div>
             </div>
 
+            <!-- Google AdSense & Advertisements -->
+            <div class="card mb-4 shadow-sm">
+                <div class="card-header bg-dark text-white"><i class="fa-solid fa-rectangle-ad me-2"></i> Advertisements & Google AdSense</div>
+                <div class="card-body">
+                    <div class="mb-3 form-check">
+                        <input type="hidden" name="settings[ads_enabled]" value="0">
+                        <input type="checkbox" name="settings[ads_enabled]" value="1" class="form-check-input" id="adsEnabled" <?php echo get_setting($pdo, 'ads_enabled') === '1' ? 'checked' : ''; ?>>
+                        <label class="form-check-label fw-bold" for="adsEnabled">Enable Advertisements across the site</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Google AdSense Publisher ID (Site-wide Loader Script)</label>
+                        <input type="text" name="settings[adsense_client_id]" class="form-control" placeholder="ca-pub-XXXXXXXXXXXXXXXX" value="<?php echo htmlspecialchars(get_setting($pdo, 'adsense_client_id', '')); ?>">
+                        <div class="form-text text-muted">
+                            <i class="fa-solid fa-circle-info me-1"></i> Enter your Publisher ID (e.g. <code>ca-pub-1234567890123456</code>). The system will automatically inject the official AdSense script into the <code>&lt;head&gt;</code> section of every page in compliance with Google specifications.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Additional / Custom Ad Script for &lt;head&gt; (Optional)</label>
+                        <textarea name="settings[ads_header_code]" class="form-control font-monospace" rows="3" placeholder="<!-- Additional ad network script tag or custom meta tags -->"><?php echo htmlspecialchars(get_setting($pdo, 'ads_header_code', '')); ?></textarea>
+                    </div>
+
+                    <hr>
+
+                    <h6><i class="fa-solid fa-shoe-prints me-1"></i> Footer Ad Unit Placement</h6>
+                    <div class="mb-3 form-check">
+                        <input type="hidden" name="settings[ads_footer_enabled]" value="0">
+                        <input type="checkbox" name="settings[ads_footer_enabled]" value="1" class="form-check-input" id="adsFooterEnabled" <?php echo get_setting($pdo, 'ads_footer_enabled') === '1' ? 'checked' : ''; ?>>
+                        <label class="form-check-label fw-bold" for="adsFooterEnabled">Display Ad Unit in Footer</label>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Footer Ad Unit Code (HTML / JavaScript)</label>
+                        <textarea name="settings[ads_footer_code]" class="form-control font-monospace" rows="5" placeholder="&lt;ins class=&quot;adsbygoogle&quot; style=&quot;display:block&quot; data-ad-client=&quot;ca-pub-XXXXXXXXXXXXXXXX&quot; data-ad-slot=&quot;1234567890&quot; data-ad-format=&quot;auto&quot; data-full-width-responsive=&quot;true&quot;&gt;&lt;/ins&gt;&#10;&lt;script&gt;(adsbygoogle = window.adsbygoogle || []).push({});&lt;/script&gt;"><?php echo htmlspecialchars(get_setting($pdo, 'ads_footer_code', '')); ?></textarea>
+                        <div class="form-text text-muted">
+                            Paste here your AdSense ad unit code (the <code>&lt;ins class="adsbygoogle" ...&gt;</code> tag and push script) or an ad banner snippet from any other provider.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Theme & Branding Customization -->
             <div class="card mb-4 shadow-sm">
                 <div class="card-header bg-dark text-white"><i class="fa-solid fa-palette me-2"></i> Theme & Branding Customization</div>
@@ -145,7 +187,7 @@ $ragItemCount = $pdo->query("SELECT COUNT(*) FROM rag_knowledge")->fetchColumn()
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-bold">Footer Injection (Before &lt;/body&gt;)</label>
-                        <textarea name="settings[inject_footer]" class="form-control font-monospace" rows="4" placeholder="<!-- e.g. AdSense script, Live chat widget -->"><?php echo htmlspecialchars(get_setting($pdo, 'inject_footer')); ?></textarea>
+                        <textarea name="settings[inject_footer]" class="form-control font-monospace" rows="4" placeholder="<!-- e.g. Analytics script, Live chat widget -->"><?php echo htmlspecialchars(get_setting($pdo, 'inject_footer')); ?></textarea>
                     </div>
                 </div>
             </div>
