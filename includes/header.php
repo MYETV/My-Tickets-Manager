@@ -1,6 +1,6 @@
 <?php
 // includes/header.php
-// Header with Bootstrap 5.3 Theme Switcher, Branding logo, Custom Colors, Language selector, Header Code Injection, and DataTables for Notifications
+// Header with Bootstrap 5.3 Theme Switcher, Branding logo, Custom Colors, Language selector, AdSense Global Script, Header Code Injection, and DataTables for Notifications
 require_once __DIR__ . '/config.php';
 $siteTitle = get_setting($pdo, 'site_title', 'My Tickets Manager');
 $availableLangs = get_available_languages();
@@ -58,6 +58,26 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
     <!-- Cloudflare Turnstile API Script -->
     <?php if (get_setting($pdo, 'turnstile_enabled', '0') === '1'): ?>
         <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+    <?php endif; ?>
+
+    <!-- Google AdSense Global Site-wide Loader Script (Head) -->
+    <?php if (get_setting($pdo, 'ads_enabled', '0') === '1'): ?>
+        <?php 
+        $adsenseClientId = trim(get_setting($pdo, 'adsense_client_id', ''));
+        if (!empty($adsenseClientId)): 
+            if (strpos($adsenseClientId, 'ca-pub-') !== 0 && is_numeric($adsenseClientId)) {
+                $adsenseClientId = 'ca-pub-' . $adsenseClientId;
+            }
+        ?>
+            <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=<?php echo htmlspecialchars($adsenseClientId); ?>" crossorigin="anonymous"></script>
+        <?php endif; ?>
+
+        <?php 
+        $adsHeaderCode = get_setting($pdo, 'ads_header_code', '');
+        if (!empty($adsHeaderCode)) {
+            echo $adsHeaderCode . "\n";
+        }
+        ?>
     <?php endif; ?>
 
     <style>
@@ -149,6 +169,23 @@ $sidebarText = get_setting($pdo, 'theme_sidebar_text', '#f8f9fa');
         #notificationsTable_wrapper .dataTables_length,
         #notificationsTable_wrapper .dataTables_filter {
             font-size: 0.85rem;
+        }
+
+        /* Footer Advertisement Unit Container Styling */
+        .footer-ad-container {
+            width: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .footer-ad-container .ad-label {
+            font-size: 0.72rem;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            opacity: 0.65;
+            margin-bottom: 4px;
         }
     </style>
     
