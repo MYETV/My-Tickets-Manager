@@ -1,8 +1,26 @@
 <?php
 // includes/footer.php
-// Main footer template file with Theme Switcher, Sidebar toggle handlers, Legal Links, and Footer Code Injection
+// Main footer template file with Theme Switcher, Sidebar toggle handlers, Legal Links, Footer Advertisement Unit, and Footer Code Injection
 ?>
     </div> <!-- End .wrapper -->
+
+    <!-- Footer Advertisement Unit -->
+    <?php if (get_setting($pdo, 'ads_enabled', '0') === '1' && get_setting($pdo, 'ads_footer_enabled', '0') === '1'): ?>
+        <?php 
+        $footerAdCode = get_setting($pdo, 'ads_footer_code', '');
+        if (!empty($footerAdCode)): 
+        ?>
+            <div class="footer-ad-container py-3 bg-body-tertiary border-top">
+                <div class="container text-center overflow-hidden">
+                    <div class="ad-label"><?php echo __('advertisement', 'Advertisement'); ?></div>
+                    <div class="d-flex justify-content-center">
+                        <?php echo $footerAdCode; ?>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+    <?php endif; ?>
+
     <footer class="bg-dark text-white text-center py-3 mt-auto">
         <div class="container">
             <small>&copy; <?php echo date('Y'); ?> <?php echo htmlspecialchars(get_setting($pdo, 'site_title', 'My Tickets Manager')); ?> - <?php echo __('open_source_ticket_management', 'Open Source Ticket Management'); ?></small>
